@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>京大生のための講義室＆出席ナビ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
+
+    <header class="bg-cyan-900 text-white py-4 px-6 shadow-md">
+        <div class="max-w-md mx-auto flex flex-col items-center w-full space-y-3">
+            <h1 class="text-xl font-bold tracking-wider">KU 講義ナビ</h1>
+            
+            <div class="flex bg-cyan-950 p-1 rounded-xl w-full text-xs text-center font-semibold">
+                <button onclick="switchTab('nav')" id="tab-nav" class="w-1/3 py-2 rounded-lg bg-cyan-700 text-white cursor-pointer transition-all">📍 ナビ</button>
+                <button onclick="switchTab('table')" id="tab-table" class="w-1/3 py-2 rounded-lg text-cyan-200 hover:text-white cursor-pointer transition-all">📅 時間割表</button>
+                <button onclick="switchTab('edit')" id="tab-edit" class="w-1/3 py-2 rounded-lg text-cyan-200 hover:text-white cursor-pointer transition-all">⚙️ 登録・編集</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow p-4 flex flex-col justify-start items-center max-w-md mx-auto w-full">
+        
+        <div id="view-nav" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 space-y-6">
+            <div class="flex items-center justify-between text-sm text-cyan-700 font-semibold">
+                <div class="flex items-center space-x-2">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                    </span>
+                    <span id="status-label">現在の次の授業</span>
+                </div>
+                <span id="current-time-display" class="text-slate-400 font-normal"></span>
+            </div>
+
+            <div>
+                <h2 id="class-name" class="text-2xl font-bold text-slate-900 mb-1">授業がありません</h2>
+                <p id="class-room" class="text-lg text-amber-600 font-medium">📍 -</p>
+            </div>
+
+            <div id="attendance-counter-box" class="bg-cyan-50/50 border border-cyan-100 rounded-xl p-4 flex justify-around text-center hidden">
+                <div class="w-1/3">
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">出席</span>
+                    <span id="count-present" class="text-2xl font-black text-cyan-600">0</span><span class="text-xs text-slate-500">回</span>
+                </div>
+                <div class="border-l border-slate-200"></div>
+                <div class="w-1/3">
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">遅刻</span>
+                    <span id="count-late" class="text-2xl font-black text-amber-500">0</span><span class="text-xs text-slate-500">回</span>
+                </div>
+                <div class="border-l border-slate-200"></div>
+                <div class="w-1/3">
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">欠席</span>
+                    <span id="count-absent" class="text-2xl font-black text-rose-500">0</span><span class="text-xs text-slate-500">回</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <button id="map-toggle-btn" onclick="toggleMap()" class="w-full text-xs bg-slate-100 text-slate-600 py-2 rounded-lg hover:bg-slate-200 transition-all font-bold">
+                    🗺️ キャンパスマップを表示
+                </button>
+                <div id="map-container" class="hidden w-full h-[250px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                    <iframe id="map-iframe" class="w-full h-full" src="" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+                    <div id="map-error-message" class="hidden text-slate-400 text-sm font-medium tracking-wide">🗺️ 地図を取得できませんでした</div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 border border-slate-100">
+                <p class="font-semibold text-slate-700 mb-1">🗺️ 行き方ナビ</p>
+                <p id="class-nav">「時間割表」のマスをクリックして授業を入力してください！</p>
+            </div>
+
+            <div id="action-buttons" class="space-y-3 text-center">
+                <div id="main-buttons-box" class="flex flex-col space-y-2">
+                    <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
+                        🔴 出席ボタン（時間外）
+                    </button>
+                    <button id="late-btn" onclick="recordAttendance('late')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all hidden cursor-pointer shadow-md shadow-amber-500/10">
+                        ⚠️ 遅刻を記録する
+                    </button>
+                </div>
+                <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 hover:text-rose-500 underline cursor-pointer transition-all hidden">
+                    ↩️ 間違えて押した（記録を取り消す）
+                </button>
+                <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium py-2 px-4 rounded-xl text-sm transition-all hidden">
+                    💤 この授業を欠席する
+                </button>
+            </div>
+        </div>
+
+        <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-100 hidden overflow-x-auto">
+            <h2 class="text-lg font-bold text-slate-900 mb-1 text-center">今期の時間割一覧</h2>
+            <p class="text-[10px] text-slate-400 text-center mb-3">※マスをタップすると編集・登録できます</p>
+            
+            <table class="w-full text-center border-collapse text-xs">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-600">
+                        <th class="py-2 border border-slate-200 w-10">限</th>
+                        <th class="py-2 border border-slate-200">月</th>
+                        <th class="py-2 border border-slate-200">火</th>
+                        <th class="py-2 border border-slate-200">水</th>
+                        <th class="py-2 border border-slate-200">木</th>
+                        <th class="py-2 border border-slate-200">金</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-grid-body"></tbody>
+            </table>
+        </div>
+
+        <div id="view-edit" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 hidden">
+            <h2 class="text-xl font-bold text-slate-900 mb-4">⚙️ 時間割の登録・編集</h2>
+            
+            <form onsubmit="saveTimetable(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">曜日</label>
+                        <select id="input-day" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                            <option value="1">月曜日</option>
+                            <option value="2">火曜日</option>
+                            <option value="3">水曜日</option>
+                            <option value="4">木曜日</option>
+                            <option value="5">金曜日</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">時限</label>
+                        <select id="input-period" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                            <option value="1">1限 (8:45〜)</option>
+                            <option value="2">2限 (10:30〜)</option>
+                            <option value="3">3限 (13:15〜)</option>
+                            <option value="4">4限 (15:00〜)</option>
+                            <option value="5">5限 (16:45〜)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">講義名</label>
+                    <input type="text" id="input-name" required placeholder="例：基礎有機化学" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">建物（マップ連動）</label>
+                        <select id="input-building" onchange="toggleCustomInput()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                            <option value="kyo-kita">共北</option>
+                            <option value="kyo-minami">共南</option>
+                            <option value="kyo-nishi">共西</option>
+                            <option value="kyo-higashi">共東</option>
+                            <option value="yoshidaminami1">1共</option>
+                            <option value="yoshidaminami2">2共</option>
+                            <option value="yoshidaminami3">3共</option>
+                            <option value="yoshidaminami4">4共</option>
+                            <option value="ilas">国際高等教育院棟</option>
+                            <option value="media">学術情報メディアセンター</option>
+                            <option value="custom">✨ リストにない場所を入力する</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">教室（詳細）</label>
+                        <input type="text" id="input-room" required placeholder="例：共401教室" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600">
+                    </div>
+                </div>
+
+                <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">手動入力：建物名（画面表示用）</label>
+                        <input type="text" id="input-custom-name" placeholder="例：北部総合館" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-bold text-slate-600">手動入力：マップ埋め込みコード（任意）</label>
+                            <span class="text-[10px] text-slate-400">空欄でも保存できます</span>
+                        </div>
+                        <textarea id="input-custom-iframe" rows="3" placeholder='<iframe src="https://..." ...></iframe>' class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-cyan-600 font-mono"></textarea>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">行き方ナビ（メモ）</label>
+                    <textarea id="input-nav" rows="2" placeholder="例：総合館の4階。階段上がって右奥。" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600"></textarea>
+                </div>
+
+                <div class="flex flex-col space-y-2 pt-2">
+                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-4 rounded-lg text-sm shadow-md transition-all cursor-pointer">
+                        💾 変更を保存する
+                    </button>
+                    
+                    <button type="button" id="delete-btn" onclick="deleteClass()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm transition-all cursor-pointer hidden">
+                        🗑️ このマスの授業を削除
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-8 border-t border-slate-100 pt-4">
+                <button onclick="clearAllData()" class="w-full text-slate-300 hover:text-slate-500 text-[10px] text-center tracking-widest uppercase transition-all cursor-pointer">
+                    ⚠️ アプリの全データを初期化（リセット）
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center py-4 text-xs text-slate-400">
+        © 2026 KU Student App Project
+    </footer>
+
+    <script>
+        const buildingMaster = {
+            "kyo-kita": { name: "共北", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1633.6455319998395!2d135.77965276810284!3d35.02444769885349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001095e68fa40e5%3A0x204d7048a2a534c8!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDljJfmo58!5e0!3m2!1sja!2sjp!4v1782136250844!5m2!1sja!2sjp" },
+            "kyo-minami": { name: "共南", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1633.6455319998395!2d135.77965276810284!3d35.02444769885349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001090d4a4fa211%3A0xb1164e0ae5e55fbc!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDljZfmo58!5e0!3m2!1sja!2sjp!4v1782136265240!5m2!1sja!2sjp" },
+            "kyo-nishi": { name: "共西", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1633.6455319998395!2d135.77965276810284!3d35.02444769885349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001095b51be492b%3A0xc88c4ffadec06b64!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDopb_mo58!5e0!3m2!1sja!2sjp!4v1782136276934!5m2!1sja!2sjp" },
+            "kyo-higashi": { name: "共東", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d440.9125763108241!2d135.78067860210666!3d35.02422807248465!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x60010959ad5d1267%3A0xe50040899c12f5ac!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDmnbHmo58!5e0!3m2!1sja!2sjp!4v1782136308139!5m2!1sja!2sjp" },
+            "yoshidaminami1": { name: "1共", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d204.20473056083998!2d135.78008265704312!3d35.024832403530006!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x600108f7f0e72225%3A0x4bfbde8882e4ba6d!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNlzHlj7fppKg!5e0!3m2!1sja!2sjp!4v1782136338103!5m2!1sja!2sjp" },
+            "yoshidaminami2": { name: "2共", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d204.20888659469747!2d135.7804695144336!3d35.02316854048144!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x600108f77e94d7e5%3A0xc340bcbd0d2efa42!2z5ZCJ55Sw5Y2X77yS5Y-36aSo!5e0!3m2!1sja!2sjp!4v1782136366021!5m2!1sja!2sjp" },
+            "yoshidaminami3": { name: "3共", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d204.2096821866787!2d135.7800839468837!3d35.022850018346716!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x60010960b90d7f8f%3A0x4960ed5765c6b0d2!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNlzPlj7fppKjvvIgz5YWx77yJ!5e0!3m2!1sja!2sjp!4v1782136380865!5m2!1sja!2sjp" },
+            "yoshidaminami4": { name: "4共", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d368.3086937650924!2d135.78063698166363!3d35.02254716293031!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x600108f9dc239863%3A0x175e69652b4a2118!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNlzTlj7fppKjvvIg05YWx77yJ!5e0!3m2!1sja!2sjp!4v1782136394689!5m2!1sja!2sjp" },
+            "ilas": { name: "国際高等教育院棟", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d368.30329964179964!2d135.77955336751174!3d35.02374455004414!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x600108f7913a6011%3A0x6a23bc0b345227aa!2z5Lqs6YO95aSn5a2mIOWbvemam-mrmOetieaVmeiCsumZouajn--8iElMQVPmo5_vvIk!5e0!3m2!1sja!2sjp!4v1782136421129!5m2!1sja!2sjp" },
+            "media": { name: "学術情報メディアセンター", embedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d204.20950250807277!2d135.7796179130674!3d35.022921954452436!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x600108f77670e589%3A0xf4196e4ad1a354bd!2z5Lqs6YO95aSn5a2mIOWtpuihk-aDheWgseODoeODh-OCo-OCouOCu-ODs-OCv-ODvOWNl-mkqA!5e0!3m2!1sja!2sjp!4v1782136455143!5m2!1sja!2sjp" }
+        };
+
+        const timeFrames = {
+            "1": { startHour: 8, startMin: 45, endHour: 10, endMin: 15 },
+            "2": { startHour: 10, startMin: 30, endHour: 12, endMin: 0 },
+            "3": { startHour: 13, startMin: 15, endHour: 14, endMin: 45 },
+            "4": { startHour: 15, startMin: 0, endHour: 16, endMin: 30 },
+            "5": { startHour: 16, startMin: 45, endHour: 18, endMin: 15 }
+        };
+
+        function toggleMap() {
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('map-toggle-btn');
+            container.classList.toggle('hidden');
+            btn.innerText = container.classList.contains('hidden') ? "🗺️ キャンパスマップを表示" : "❌ マップを閉じる";
+        }
+
+        function toggleCustomInput() {
+            const select = document.getElementById('input-building').value;
+            const customBox = document.getElementById('custom-building-box');
+            if (select === 'custom') {
+                customBox.classList.remove('hidden');
+            } else {
+                customBox.classList.add('hidden');
+            }
+        }
+
+        function extractUrlFromIframe(htmlString) {
+            if (!htmlString) return '';
+            if (htmlString.trim().startsWith('http')) return htmlString.trim();
+            const match = htmlString.match(/src=["']([^"']+)["']/);
+            return match ? match[1] : '';
+        }
+
+        let timetable = JSON.parse(localStorage.getItem('kyodai_timetable')) || [];
+        let currentActiveClass = null;
+        let hasPressedThisSlot = null;
+
+        function switchTab(tabName) {
+            const views = ['nav', 'table', 'edit'];
+            views.forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                document.getElementById(`tab-${v}`).className = "w-1/3 py-2 rounded-lg text-cyan-200 hover:text-white cursor-pointer transition-all";
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).className = "w-1/3 py-2 rounded-lg bg-cyan-700 text-white cursor-pointer transition-all";
+
+            if (tabName === 'nav') updateApp();
+            if (tabName === 'table') generateTimetableGrid();
+            if (tabName === 'edit' && !document.getElementById('input-name').value) {
+                document.getElementById('delete-btn').classList.add('hidden');
+            }
+        }
+
+        function clickCell(day, period) {
+            document.getElementById('input-day').value = day;
+            document.getElementById('input-period').value = period;
+
+            const match = timetable.find(item => item.day === day && item.period === period);
+            const deleteBtn = document.getElementById('delete-btn');
+
+            if (match) {
+                document.getElementById('input-name').value = match.name;
+                document.getElementById('input-room').value = match.room;
+                document.getElementById('input-nav').value = match.nav || '';
+                
+                if (buildingMaster[match.building]) {
+                    document.getElementById('input-building').value = match.building;
+                    document.getElementById('input-custom-name').value = '';
+                    document.getElementById('input-custom-iframe').value = '';
+                } else {
+                    document.getElementById('input-building').value = 'custom';
+                    document.getElementById('input-custom-name').value = match.customBuildingName || '';
+                    document.getElementById('input-custom-iframe').value = match.customEmbedUrl || '';
+                }
+                deleteBtn.style.display = "block";
+                deleteBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('input-name').value = '';
+                document.getElementById('input-building').value = 'kyo-kita';
+                document.getElementById('input-room').value = '';
+                document.getElementById('input-nav').value = '';
+                document.getElementById('input-custom-name').value = '';
+                document.getElementById('input-custom-iframe').value = '';
+                deleteBtn.style.display = "none";
+                deleteBtn.classList.add('hidden');
+            }
+
+            toggleCustomInput();
+            switchTab('edit');
+        }
+
+        function generateTimetableGrid() {
+            const tbody = document.getElementById('timetable-grid-body');
+            tbody.innerHTML = '';
+            const periods = ["1", "2", "3", "4", "5"];
+
+            periods.forEach(p => {
+                const tr = document.createElement('tr');
+                const tdLabel = document.createElement('td');
+                tdLabel.className = "py-4 border border-slate-200 bg-slate-50 font-bold text-slate-500";
+                tdLabel.innerText = p;
+                tr.appendChild(tdLabel);
+
+                for (let d = 1; d <= 5; d++) {
+                    const td = document.createElement('td');
+                    td.className = "p-2 border border-slate-200 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 select-none text-[10px]";
+                    td.setAttribute('onclick', `clickCell(${d}, '${p}')`);
+
+                    const match = timetable.find(item => item.day === d && item.period === p);
+
+                    if (match) {
+                        td.className += " bg-cyan-50/80 text-cyan-950 hover:bg-cyan-100/90";
+                        let bName = "学内";
+                        if (match.building === 'custom') {
+                            bName = match.customBuildingName || "自由入力";
+                        } else if (buildingMaster[match.building]) {
+                            bName = buildingMaster[match.building].name;
+                        }
+                        // マス内に「遅」を追加
+                        td.innerHTML = `<div class="font-bold leading-tight break-all text-[11px]">${match.name}</div><div class="text-[10px] text-amber-600 mt-0.5 truncate">📍${bName} ${match.room}</div><div class="text-[9px] text-slate-400 mt-0.5 font-mono">出:${match.present} 遅:${match.late || 0} 欠:${match.absent}</div>`;
+                    } else {
+                        td.className += " text-slate-300 text-xs";
+                        td.innerText = "＋";
+                    }
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteClass() {
+            const day = parseInt(document.getElementById('input-day').value);
+            const period = document.getElementById('input-period').value;
+
+            if (confirm("このマスの授業を削除しますか？")) {
+                timetable = timetable.filter(item => !(item.day === day && item.period === period));
+                localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
+                alert("削除しました。");
+                switchTab('table');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("【警告】登録したすべての時間割と出席カウントを完全に消去します。よろしいですか？")) {
+                localStorage.removeItem('kyodai_timetable');
+                timetable = [];
+                hasPressedThisSlot = null;
+                alert("すべてのデータを初期化しました。");
+                location.reload();
+            }
+        }
+
+        function saveTimetable(event) {
+            event.preventDefault();
+
+            const day = parseInt(document.getElementById('input-day').value);
+            const period = document.getElementById('input-period').value;
+            const name = document.getElementById('input-name').value;
+            const building = document.getElementById('input-building').value;
+            const room = document.getElementById('input-room').value;
+            const nav = document.getElementById('input-nav').value;
+
+            let customBuildingName = '';
+            let customEmbedUrl = '';
+
+            if (building === 'custom') {
+                customBuildingName = document.getElementById('input-custom-name').value || '自由場所';
+                const rawIframe = document.getElementById('input-custom-iframe').value;
+                if (rawIframe.trim() !== "") {
+                    customEmbedUrl = extractUrlFromIframe(rawIframe);
+                }
+            }
+
+            const existing = timetable.find(item => item.day === day && item.period === period);
+            const presentCount = existing ? (existing.present || 0) : 0;
+            const lateCount = existing ? (existing.late || 0) : 0; // 遅刻を引き継ぐ
+            const absentCount = existing ? (existing.absent || 0) : 0;
+
+            timetable = timetable.filter(item => !(item.day === day && item.period === period));
+
+            timetable.push({
+                id: `${day}-${period}`,
+                day: day,
+                period: period,
+                name: name,
+                building: building,
+                customBuildingName: customBuildingName,
+                customEmbedUrl: customEmbedUrl,
+                room: room,
+                nav: nav,
+                startHour: timeFrames[period].startHour,
+                startMin: timeFrames[period].startMin,
+                endHour: timeFrames[period].endHour,
+                endMin: timeFrames[period].endMin,
+                present: presentCount,
+                late: lateCount,
+                absent: absentCount
+            });
+
+            localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
+            alert("時間割を保存しました！");
+            switchTab('table');
+        }
+
+        function recordAttendance(type) {
+            if (!currentActiveClass) return;
+            
+            const now = new Date();
+            const nowTotal = now.getHours() * 60 + now.getMinutes();
+            const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
+            const classEndTotal = currentActiveClass.endHour * 60 + currentActiveClass.endMin;
+            
+            if (nowTotal < classStartTotal - 15 || nowTotal > classEndTotal) {
+                alert("⚠️ 現在は受付時間外です。");
+                return;
+            }
+
+            timetable = timetable.map(item => {
+                if (item.id === currentActiveClass.id) {
+                    if (type === 'present') item.present = (item.present || 0) + 1;
+                    if (type === 'late') item.late = (item.late || 0) + 1; // 遅刻カウント追加
+                    if (type === 'absent') item.absent = (item.absent || 0) + 1;
+                }
+                return item;
+            });
+            localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
+            hasPressedThisSlot = type;
+            updateApp();
+        }
+
+        function undoAttendance() {
+            if (!currentActiveClass || !hasPressedThisSlot) return;
+            timetable = timetable.map(item => {
+                if (item.id === currentActiveClass.id) {
+                    if (hasPressedThisSlot === 'present' && item.present > 0) item.present--;
+                    if (hasPressedThisSlot === 'late' && item.late > 0) item.late--; // 遅刻取り消し追加
+                    if (hasPressedThisSlot === 'absent' && item.absent > 0) item.absent--;
+                }
+                return item;
+            });
+            localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
+            hasPressedThisSlot = null;
+            updateApp();
+        }
+
+        function updateApp() {
+            const now = new Date();
+            const currentDay = now.getDay(); 
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+
+            document.getElementById('current-time-display').innerText = `${currentHour}:${String(currentMin).padStart(2, '0')}`;
+
+            let prevClassId = currentActiveClass ? currentActiveClass.id : null;
+            currentActiveClass = null;
+
+            for (let item of timetable) {
+                if (item.day === currentDay) {
+                    const startTotal = item.startHour * 60 + item.startMin - 15;
+                    const endTotal = item.endHour * 60 + item.endMin;
+                    const nowTotal = currentHour * 60 + currentMin;
+
+                    if (nowTotal >= startTotal && nowTotal <= endTotal) {
+                        currentActiveClass = item;
+                        break;
+                    }
+                }
+            }
+
+            if (currentActiveClass && currentActiveClass.id !== prevClassId) {
+                hasPressedThisSlot = null;
+            }
+
+            const nameEl = document.getElementById('class-name');
+            const roomEl = document.getElementById('class-room');
+            const navEl = document.getElementById('class-nav');
+            const btnEl = document.getElementById('attendance-btn');
+            const lateBtn = document.getElementById('late-btn');
+            const absentBtn = document.getElementById('absent-btn');
+            const undoBtn = document.getElementById('undo-btn');
+            const counterBox = document.getElementById('attendance-counter-box');
+            const mapIframe = document.getElementById('map-iframe');
+            const mapErrorEl = document.getElementById('map-error-message');
+
+            if (currentActiveClass) {
+                let displayBuilding = "学内";
+                let finalMapUrl = "";
+
+                if (currentActiveClass.building === 'custom') {
+                    displayBuilding = currentActiveClass.customBuildingName;
+                    finalMapUrl = currentActiveClass.customEmbedUrl;
+                } else if (buildingMaster[currentActiveClass.building]) {
+                    displayBuilding = buildingMaster[currentActiveClass.building].name;
+                    finalMapUrl = buildingMaster[currentActiveClass.building].embedUrl;
+                }
+                
+                nameEl.innerText = currentActiveClass.name;
+                roomEl.innerText = `📍 ${displayBuilding} ${currentActiveClass.room}`;
+                navEl.innerText = currentActiveClass.nav || "ナビ情報はありません。";
+                
+                if (finalMapUrl) {
+                    mapIframe.src = finalMapUrl;
+                    mapIframe.classList.remove('hidden');
+                    mapErrorEl.classList.add('hidden');
+                } else {
+                    mapIframe.src = "";
+                    mapIframe.classList.add('hidden');
+                    mapErrorEl.classList.remove('hidden');
+                }
+
+                // ナビ画面のカウント表示（遅刻を追加）
+                counterBox.classList.remove('hidden');
+                document.getElementById('count-present').innerText = currentActiveClass.present || 0;
+                document.getElementById('count-late').innerText = currentActiveClass.late || 0;
+                document.getElementById('count-absent').innerText = currentActiveClass.absent || 0;
+
+                const nowTotal = currentHour * 60 + currentMin;
+                const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
+                
+                // ボタンの表示制御
+                if (hasPressedThisSlot) {
+                    let statusText = "出席";
+                    if (hasPressedThisSlot === 'late') statusText = "遅刻";
+                    if (hasPressedThisSlot === 'absent') statusText = "欠席";
+
+                    btnEl.innerText = `✓ ${statusText}記録済み`;
+                    btnEl.disabled = true;
+                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                    
+                    lateBtn.classList.add('hidden');
+                    absentBtn.classList.add('hidden');
+                    undoBtn.classList.remove('hidden');
+                } else if (nowTotal >= classStartTotal - 15) {
+                    // 出席ボタン（赤）
+                    btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`;
+                    btnEl.disabled = false;
+                    btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-cyan-600/20 active:scale-98 transition-all text-lg cursor-pointer";
+                    
+                    // 遅刻ボタン（黄）を表示化
+                    lateBtn.classList.remove('hidden');
+                    absentBtn.classList.remove('hidden');
+                    undoBtn.classList.add('hidden');
+                } else {
+                    btnEl.innerText = "🕒 時間外（開始15分前から受付）";
+                    btnEl.disabled = true;
+                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                    
+                    lateBtn.classList.add('hidden');
+                    absentBtn.classList.add('hidden');
+                    undoBtn.classList.add('hidden');
+                }
+            } else {
+                nameEl.innerText = "次の授業はありません";
+                roomEl.innerText = "📍 -";
+                navEl.innerText = "登録された時間割に該当する授業がないか、時間外です。「時間割表」のマス目をタップして入力してください！";
+                btnEl.innerText = "🔴 出席ボタン（時間外）";
+                btnEl.disabled = true;
+                btnEl.className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                
+                mapIframe.src = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1633.6455319998395!2d135.77965276810284!3d35.02444769885349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001095e68fa40e5%3A0x204d7048a2a534c8!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDljJfmo58!5e0!3m2!1sja!2sjp!4v1782136250844!5m2!1sja!2sjp";
+                mapIframe.classList.remove('hidden');
+                mapErrorEl.classList.add('hidden');
+
+                lateBtn.classList.add('hidden');
+                absentBtn.classList.add('hidden');
+                undoBtn.classList.add('hidden');
+                counterBox.classList.add('hidden');
+            }
+        }
+
+        updateApp();
+        setInterval(updateApp, 60000);
+    </script>
+</body>
+</html>
