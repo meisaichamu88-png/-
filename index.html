@@ -254,7 +254,6 @@
 
         let timetable = JSON.parse(localStorage.getItem('kyodai_timetable')) || [];
         let currentActiveClass = null;
-        let hasPressedThisSlot = null;
 
         function switchTab(tabName) {
             const views = ['nav', 'table', 'edit'];
@@ -338,7 +337,6 @@
                         } else if (buildingMaster[match.building]) {
                             bName = buildingMaster[match.building].name;
                         }
-                        // マス内に「遅」を追加
                         td.innerHTML = `<div class="font-bold leading-tight break-all text-[11px]">${match.name}</div><div class="text-[10px] text-amber-600 mt-0.5 truncate">📍${bName} ${match.room}</div><div class="text-[9px] text-slate-400 mt-0.5 font-mono">出:${match.present} 遅:${match.late || 0} 欠:${match.absent}</div>`;
                     } else {
                         td.className += " text-slate-300 text-xs";
@@ -366,7 +364,6 @@
             if (confirm("【警告】登録したすべての時間割と出席カウントを完全に消去します。よろしいですか？")) {
                 localStorage.removeItem('kyodai_timetable');
                 timetable = [];
-                hasPressedThisSlot = null;
                 alert("すべてのデータを初期化しました。");
                 location.reload();
             }
@@ -395,8 +392,9 @@
 
             const existing = timetable.find(item => item.day === day && item.period === period);
             const presentCount = existing ? (existing.present || 0) : 0;
-            const lateCount = existing ? (existing.late || 0) : 0; // 遅刻を引き継ぐ
+            const lateCount = existing ? (existing.late || 0) : 0;
             const absentCount = existing ? (existing.absent || 0) : 0;
+            const hasPressed = existing ? (existing.hasPressed || null) : null; // 重複ロック状態も引き継ぐ
 
             timetable = timetable.filter(item => !(item.day === day && item.period === period));
 
@@ -416,7 +414,8 @@
                 endMin: timeFrames[period].endMin,
                 present: presentCount,
                 late: lateCount,
-                absent: absentCount
+                absent: absentCount,
+                hasPressed: hasPressed
             });
 
             localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
@@ -440,28 +439,35 @@
             timetable = timetable.map(item => {
                 if (item.id === currentActiveClass.id) {
                     if (type === 'present') item.present = (item.present || 0) + 1;
-                    if (type === 'late') item.late = (item.late || 0) + 1; // 遅刻カウント追加
+                    if (type === 'late') item.late = (item.late || 0) + 1;
                     if (type === 'absent') item.absent = (item.absent || 0) + 1;
+                    item.hasPressed = type; // ボタンが押されたフラグを永続化保存
                 }
                 return item;
             });
             localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
-            hasPressedThisSlot = type;
             updateApp();
         }
 
         function undoAttendance() {
-            if (!currentActiveClass || !hasPressedThisSlot) return;
+            if (!currentActiveClass) return;
+            
+            // 現在の授業データから保存されているフラグを取得
+            const target = timetable.find(item => item.id === currentActiveClass.id);
+            if (!target || !target.hasPressed) return;
+
+            const pressedType = target.hasPressed;
+
             timetable = timetable.map(item => {
                 if (item.id === currentActiveClass.id) {
-                    if (hasPressedThisSlot === 'present' && item.present > 0) item.present--;
-                    if (hasPressedThisSlot === 'late' && item.late > 0) item.late--; // 遅刻取り消し追加
-                    if (hasPressedThisSlot === 'absent' && item.absent > 0) item.absent--;
+                    if (pressedType === 'present' && item.present > 0) item.present--;
+                    if (pressedType === 'late' && item.late > 0) item.late--;
+                    if (pressedType === 'absent' && item.absent > 0) item.absent--;
+                    item.hasPressed = null; // フラグをクリア
                 }
                 return item;
             });
             localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
-            hasPressedThisSlot = null;
             updateApp();
         }
 
@@ -473,7 +479,6 @@
 
             document.getElementById('current-time-display').innerText = `${currentHour}:${String(currentMin).padStart(2, '0')}`;
 
-            let prevClassId = currentActiveClass ? currentActiveClass.id : null;
             currentActiveClass = null;
 
             for (let item of timetable) {
@@ -489,9 +494,8 @@
                 }
             }
 
-            if (currentActiveClass && currentActiveClass.id !== prevClassId) {
-                hasPressedThisSlot = null;
-            }
+            // 週が変わるか、該当の授業時間を超えて誰も登録していない時間帯になったらロック解除を判定
+            // (今回は現在の授業枠（currentActiveClass）が存在する間のロック状態を永続データから確認します)
 
             const nameEl = document.getElementById('class-name');
             const roomEl = document.getElementById('class-room');
@@ -530,7 +534,6 @@
                     mapErrorEl.classList.remove('hidden');
                 }
 
-                // ナビ画面のカウント表示（遅刻を追加）
                 counterBox.classList.remove('hidden');
                 document.getElementById('count-present').innerText = currentActiveClass.present || 0;
                 document.getElementById('count-late').innerText = currentActiveClass.late || 0;
@@ -539,7 +542,9 @@
                 const nowTotal = currentHour * 60 + currentMin;
                 const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
                 
-                // ボタンの表示制御
+                // メモリ空間ではなく、保存データ(hasPressed)から状態を読み取る
+                const hasPressedThisSlot = currentActiveClass.hasPressed;
+
                 if (hasPressedThisSlot) {
                     let statusText = "出席";
                     if (hasPressedThisSlot === 'late') statusText = "遅刻";
@@ -553,12 +558,10 @@
                     absentBtn.classList.add('hidden');
                     undoBtn.classList.remove('hidden');
                 } else if (nowTotal >= classStartTotal - 15) {
-                    // 出席ボタン（赤）
                     btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`;
                     btnEl.disabled = false;
                     btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-cyan-600/20 active:scale-98 transition-all text-lg cursor-pointer";
                     
-                    // 遅刻ボタン（黄）を表示化
                     lateBtn.classList.remove('hidden');
                     absentBtn.classList.remove('hidden');
                     undoBtn.classList.add('hidden');
@@ -587,6 +590,19 @@
                 absentBtn.classList.add('hidden');
                 undoBtn.classList.add('hidden');
                 counterBox.classList.add('hidden');
+
+                // 授業時間外になったら、すべてのマスの重複フラグ(hasPressed)を一斉に解除して来週に備える
+                let needSave = false;
+                timetable = timetable.map(item => {
+                    if (item.hasPressed) {
+                        item.hasPressed = null;
+                        needSave = true;
+                    }
+                    return item;
+                });
+                if (needSave) {
+                    localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
+                }
             }
         }
 
