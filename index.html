@@ -81,7 +81,7 @@
                     </button>
                 </div>
                 <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 hover:text-rose-500 underline cursor-pointer transition-all hidden">
-                    ↩️ 間違えて押した（記録を取り消す）
+                    ↩️ 間間違えて押した（記録を取り消す）
                 </button>
                 <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium py-2 px-4 rounded-xl text-sm transition-all hidden">
                     💤 この授業を欠席する
@@ -91,7 +91,7 @@
 
         <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-100 hidden overflow-x-auto">
             <h2 class="text-lg font-bold text-slate-900 mb-1 text-center">今期の時間割一覧</h2>
-            <p class="text-[10px] text-slate-400 text-center mb-3">※マスをタップすると編集・登録できます</p>
+            <p class="text-[10px] text-slate-400 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
             
             <table class="w-full text-center border-collapse text-xs">
                 <thead>
@@ -202,6 +202,51 @@
 
     </main>
 
+    <div id="detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden" onclick="closeDetailModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs space-y-4 transform transition-all select-none" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center">
+                <span id="modal-slot-label" class="text-xs font-bold text-cyan-800 bg-cyan-50 px-2 py-1 rounded-md border border-cyan-100"></span>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">✕</button>
+            </div>
+            
+            <div>
+                <h3 id="modal-class-name" class="text-lg font-black text-slate-900 leading-tight mb-1"></h3>
+                <p id="modal-class-room" class="text-sm text-amber-600 font-semibold"></p>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-around text-center text-xs">
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold mb-0.5">出席</span>
+                    <span id="modal-count-present" class="text-base font-black text-cyan-600">0</span><span class="text-[10px] text-slate-500">回</span>
+                </div>
+                <div class="border-l border-slate-200"></div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold mb-0.5">遅刻</span>
+                    <span id="modal-count-late" class="text-base font-black text-amber-500">0</span><span class="text-[10px] text-slate-500">回</span>
+                </div>
+                <div class="border-l border-slate-200"></div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold mb-0.5">欠席</span>
+                    <span id="modal-count-absent" class="text-base font-black text-rose-500">0</span><span class="text-[10px] text-slate-500">回</span>
+                </div>
+            </div>
+
+            <div>
+                <span class="block text-[10px] text-slate-400 font-bold mb-1">🗺️ 行き方メモ</span>
+                <p id="modal-class-nav" class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 min-h-[40px] whitespace-pre-wrap"></p>
+            </div>
+
+            <div class="flex space-x-2 pt-1.5">
+                <button onclick="closeDetailModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
+                    ❌ 閉じる
+                </button>
+                <button id="modal-edit-btn" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-cyan-600/10 transition-all cursor-pointer">
+                    ⚙️ この授業を編集
+                </button>
+            </div>
+        </div>
+    </div>
+
     <footer class="text-center py-4 text-xs text-slate-400">
         © 2026 KU Student App Project
     </footer>
@@ -256,7 +301,7 @@
 
         let timetable = JSON.parse(localStorage.getItem('kyodai_timetable')) || [];
         let currentActiveClass = null;
-        let isPreviewMode = false; // 予告表示モードかどうかのフラグ
+        let isPreviewMode = false;
 
         function switchTab(tabName) {
             const views = ['nav', 'table', 'edit'];
@@ -275,7 +320,49 @@
             }
         }
 
-        function clickCell(day, period) {
+        // 🟢 時間割をクリックした時に動く処理（詳細ポップアップ or 直登録）
+        function handleGridClick(day, period) {
+            const match = timetable.find(item => item.day === day && item.period === period);
+            
+            if (!match) {
+                // 授業が入っていない空きコマなら、直接登録画面へ（親切設計）
+                openEditForm(day, period);
+                return;
+            }
+
+            // 授業データがある場合は詳細ポップアップを表示
+            const daysLabel = ["", "月", "火", "水", "木", "金"];
+            document.getElementById('modal-slot-label').innerText = `${daysLabel[day]}曜 ${period}限`;
+            document.getElementById('modal-class-name').innerText = match.name;
+            
+            let bName = "学内";
+            if (match.building === 'custom') {
+                bName = match.customBuildingName || "自由入力";
+            } else if (buildingMaster[match.building]) {
+                bName = buildingMaster[match.building].name;
+            }
+            document.getElementById('modal-class-room').innerText = `📍 ${bName} ${match.room}`;
+            
+            document.getElementById('modal-count-present').innerText = match.present || 0;
+            document.getElementById('modal-count-late').innerText = match.late || 0;
+            document.getElementById('modal-count-absent').innerText = match.absent || 0;
+            document.getElementById('modal-class-nav').innerText = match.nav || "ナビ情報・メモはありません。";
+
+            // 「この授業を編集」ボタンの挙動を設定
+            document.getElementById('modal-edit-btn').onclick = function() {
+                closeDetailModal();
+                openEditForm(day, period);
+            };
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        // フォームにデータをセットして編集タブに切り替える共通ロジック
+        function openEditForm(day, period) {
             document.getElementById('input-day').value = day;
             document.getElementById('input-period').value = period;
 
@@ -328,7 +415,8 @@
                 for (let d = 1; d <= 5; d++) {
                     const td = document.createElement('td');
                     td.className = "p-2 border border-slate-200 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 select-none text-[10px]";
-                    td.setAttribute('onclick', `clickCell(${d}, '${p}')`);
+                    // 新しい処理へバインド
+                    td.setAttribute('onclick', `handleGridClick(${d}, '${p}')`);
 
                     const match = timetable.find(item => item.day === d && item.period === p);
 
@@ -427,7 +515,7 @@
         }
 
         function recordAttendance(type) {
-            if (!currentActiveClass || isPreviewMode) return; // 予告表示中は記録不可
+            if (!currentActiveClass || isPreviewMode) return;
             
             const now = new Date();
             const nowTotal = now.getHours() * 60 + now.getMinutes();
@@ -473,13 +561,11 @@
             updateApp();
         }
 
-        // 先読み予告オブジェクトを探すスマートロジック
         function findNextClass(currentDay, currentHour, currentMin) {
             if (timetable.length === 0) return null;
 
             const nowTotal = currentHour * 60 + currentMin;
 
-            // 1. 今日の残りの時限から探す
             let todayClasses = timetable.filter(item => item.day === currentDay);
             todayClasses.sort((a, b) => parseInt(a.period) - parseInt(b.period));
             for (let item of todayClasses) {
@@ -489,10 +575,9 @@
                 }
             }
 
-            // 2. 明日以降〜直近の曜日から探す (最大7日後までループ)
             for (let i = 1; i <= 7; i++) {
                 let checkDay = (currentDay + i) % 7;
-                if (checkDay === 0 || checkDay === 6) continue; // 土日はスキップ
+                if (checkDay === 0 || checkDay === 6) continue;
                 
                 let nextDayClasses = timetable.filter(item => item.day === checkDay);
                 if (nextDayClasses.length > 0) {
@@ -515,7 +600,6 @@
             isPreviewMode = false;
             let previewDayLabel = "";
 
-            // A. まず「現在アクティブな授業（開始15分前〜終了まで）」を探す
             for (let item of timetable) {
                 if (item.day === currentDay) {
                     const startTotal = item.startHour * 60 + item.startMin - 15;
@@ -529,7 +613,6 @@
                 }
             }
 
-            // B. アクティブな授業がない場合、「先読み予告（NEXT STAGE）」を作動させる
             if (!currentActiveClass) {
                 const nextData = findNextClass(currentDay, currentHour, currentMin);
                 if (nextData) {
@@ -585,11 +668,10 @@
                 document.getElementById('count-absent').innerText = currentActiveClass.absent || 0;
 
                 if (isPreviewMode) {
-                    // 【予告表示中のデザイン・ボタン制御】
                     labelEl.innerText = `⏭️ ${previewDayLabel} (${currentActiveClass.period}限)`;
                     labelEl.className = "text-amber-600 font-bold flex items-center";
                     dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
-                    pingEl.classList.add('hidden'); // 動くアニメーションは隠す
+                    pingEl.classList.add('hidden');
 
                     btnEl.innerText = `🕒 時間外（${currentActiveClass.period}限の開始15分前から受付）`;
                     btnEl.disabled = true;
@@ -600,7 +682,6 @@
                     undoBtn.classList.add('hidden');
 
                 } else {
-                    // 【リアルタイム授業中のデザイン・ボタン制御】
                     labelEl.innerText = `🔴 現在の授業 (${currentActiveClass.period}限)`;
                     labelEl.className = "text-cyan-700 font-bold flex items-center";
                     dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-cyan-500";
@@ -641,7 +722,6 @@
                     }
                 }
             } else {
-                // 時間割データが1つも登録されていない場合の表示
                 labelEl.innerText = "授業データがありません";
                 labelEl.className = "text-slate-400 font-normal";
                 dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-300";
@@ -663,7 +743,6 @@
                 undoBtn.classList.add('hidden');
                 counterBox.classList.add('hidden');
 
-                // 授業が全くない時は全マスのフラグを一斉解除
                 let needSave = false;
                 timetable = timetable.map(item => {
                     if (item.hasPressed) {
