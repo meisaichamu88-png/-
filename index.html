@@ -4,17 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>京大生のための講義室＆出席ナビ</title>
-    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* 手動補正用のスタイル：ダークモード（.dark）時の色の強制指定 */
-        .dark body { background-color: #020617 !important; color: #f8fafc !important; }
-        .dark #view-nav, .dark #view-table, .dark #view-edit { background-color: #0f172a !important; border-color: #1e293b !important; }
-        .dark .dark-grid-head { background-color: #1e293b !important; color: #94a3b8 !important; }
-        .dark .dark-grid-label { background-color: #1e293b !important; color: #94a3b8 !important; }
-        .dark .dark-grid-cell-empty { color: #475569 !important; }
-        .dark .dark-modal { background-color: #1e293b !important; color: #f1f5f9 !important; }
-        .dark input, .dark select, .dark textarea { background-color: #020617 !important; color: #f8fafc !important; border-color: #1e293b !important; }
+        /* 🌗 高コントラスト・ダークモード（.dark）時の完全上書き指定 */
+        .dark body { background-color: #030712 !important; color: #f8fafc !important; }
+        
+        /* カード類の背景を明るめの紺色にして境界線をクッキリに */
+        .dark #view-nav, .dark #view-table, .dark #view-edit { 
+            background-color: #111827 !important; 
+            border-color: #374151 !important; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+        }
+        
+        /* テーブルのヘッダーと時限ラベル */
+        .dark .dark-grid-head { background-color: #1f2937 !important; color: #f3f4f6 !important; border-color: #374151 !important; }
+        .dark .dark-grid-label { background-color: #1f2937 !important; color: #f3f4f6 !important; border-color: #374151 !important; }
+        .dark table, .dark th, .dark td { border-color: #374151 !important; }
+        .dark .dark-grid-cell-empty { color: #6b7280 !important; }
+        
+        /* モーダルポップアップ */
+        .dark .dark-modal { background-color: #1f2937 !important; color: #f9fafb !important; border: 1px solid #4b5563 !important; }
+        
+        /* 入力フォーム関連 */
+        .dark input, .dark select, .dark textarea { 
+            background-color: #030712 !important; 
+            color: #ffffff !important; 
+            border-color: #4b5563 !important; 
+        }
+        .dark input:focus, .dark select:focus, .dark textarea:focus {
+            outline: 2px solid #22d3ee !important;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between transition-colors duration-200">
@@ -24,13 +43,12 @@
             <div class="flex justify-between items-center w-full">
                 <div class="w-8"></div>
                 <h1 class="text-xl font-bold tracking-wider">KU 講義ナビ</h1>
-                <!-- 🌙 ダークモード切り替えボタン -->
-                <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-cyan-950 hover:bg-cyan-800 flex items-center justify-center text-lg cursor-pointer transition-all shadow-inner" id="theme-btn" title="テーマ切り替え">
+                <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-cyan-950 hover:bg-cyan-800 flex items-center justify-center text-lg cursor-pointer transition-all shadow-inner border border-cyan-800" id="theme-btn" title="テーマ切り替え">
                     🌙
                 </button>
             </div>
             
-            <div class="flex bg-cyan-950 p-1 rounded-xl w-full text-xs text-center font-semibold">
+            <div class="flex bg-cyan-950 p-1 rounded-xl w-full text-xs text-center font-semibold border border-cyan-900">
                 <button onclick="switchTab('nav')" id="tab-nav" class="w-1/3 py-2 rounded-lg bg-cyan-700 text-white cursor-pointer transition-all">📍 ナビ</button>
                 <button onclick="switchTab('table')" id="tab-table" class="w-1/3 py-2 rounded-lg text-cyan-200 hover:text-white cursor-pointer transition-all">📅 時間割表</button>
                 <button onclick="switchTab('edit')" id="tab-edit" class="w-1/3 py-2 rounded-lg text-cyan-200 hover:text-white cursor-pointer transition-all">⚙️ 登録・編集</button>
@@ -40,9 +58,8 @@
 
     <main class="flex-grow p-4 flex flex-col justify-start items-center max-w-md mx-auto w-full">
         
-        <!-- ナビタブ -->
-        <div id="view-nav" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 space-y-6">
-            <div class="flex items-center justify-between text-sm text-cyan-700 font-semibold" id="nav-status-header">
+        <div id="view-nav" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-200 space-y-6">
+            <div class="flex items-center justify-between text-sm text-cyan-700 dark:text-cyan-400 font-bold" id="nav-status-header">
                 <div class="flex items-center space-x-2">
                     <span class="flex h-2 w-2 relative">
                         <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -50,74 +67,71 @@
                     </span>
                     <span id="status-label">現在の授業</span>
                 </div>
-                <span id="current-time-display" class="text-slate-400 font-normal"></span>
+                <span id="current-time-display" class="text-slate-400 dark:text-slate-400 font-mono font-bold"></span>
             </div>
 
             <div>
-                <h2 id="class-name" class="text-2xl font-bold text-slate-900 mb-1">授業がありません</h2>
-                <p id="class-room" class="text-lg text-amber-600 font-medium">📍 -</p>
+                <h2 id="class-name" class="text-2xl font-black text-slate-900 dark:text-white mb-1">授業がありません</h2>
+                <p id="class-room" class="text-lg text-amber-600 dark:text-amber-400 font-bold">📍 -</p>
             </div>
 
-            <!-- カウンターボックス -->
-            <div id="attendance-counter-box" class="bg-cyan-50/50 border border-cyan-100 rounded-xl p-4 flex justify-around text-center hidden">
+            <div id="attendance-counter-box" class="bg-cyan-50/50 dark:bg-slate-950 border border-cyan-100 dark:border-slate-800 rounded-xl p-4 flex justify-around text-center hidden">
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">出席</span>
-                    <span id="count-present" class="text-2xl font-black text-cyan-600">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">出席</span>
+                    <span id="count-present" class="text-2xl font-black text-cyan-600 dark:text-cyan-400">0</span><span class="text-xs text-slate-500 dark:text-slate-400">回</span>
                 </div>
-                <div class="border-l border-slate-200"></div>
+                <div class="border-l border-slate-200 dark:border-slate-800"></div>
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">遅刻</span>
-                    <span id="count-late" class="text-2xl font-black text-amber-500">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">遅刻</span>
+                    <span id="count-late" class="text-2xl font-black text-amber-500 dark:text-amber-400">0</span><span class="text-xs text-slate-500 dark:text-slate-400">回</span>
                 </div>
-                <div class="border-l border-slate-200"></div>
+                <div class="border-l border-slate-200 dark:border-slate-800"></div>
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">欠席</span>
-                    <span id="count-absent" class="text-2xl font-black text-rose-500">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">欠席</span>
+                    <span id="count-absent" class="text-2xl font-black text-rose-500 dark:text-rose-400">0</span><span class="text-xs text-slate-500 dark:text-slate-400">回</span>
                 </div>
             </div>
 
             <div class="space-y-3">
-                <button id="map-toggle-btn" onclick="toggleMap()" class="w-full text-xs bg-slate-100 text-slate-600 py-2 rounded-lg hover:bg-slate-200 transition-all font-bold">
+                <button id="map-toggle-btn" onclick="toggleMap()" class="w-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-2.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-bold border dark:border-slate-700">
                     🗺️ キャンパスマップを表示
                 </button>
-                <div id="map-container" class="hidden w-full h-[250px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                <div id="map-container" class="hidden w-full h-[250px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
                     <iframe id="map-iframe" class="w-full h-full" src="" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
                     <div id="map-error-message" class="hidden text-slate-400 text-sm font-medium tracking-wide">🗺️ 地図を取得できませんでした</div>
                 </div>
             </div>
 
-            <div class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 border border-slate-100">
-                <p class="font-semibold text-slate-700 mb-1">🗺️ 行き方ナビ</p>
+            <div class="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
+                <p class="font-bold text-slate-800 dark:text-cyan-400 mb-1">🗺️ 行き方ナビ</p>
                 <p id="class-nav">「時間割表」のマスをクリックして授業を入力してください！</p>
             </div>
 
-            <!-- アクションボタンエリア -->
             <div id="action-buttons" class="space-y-3 text-center">
                 <div id="main-buttons-box" class="flex flex-col space-y-2">
-                    <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
+                    <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
                         🔴 出席ボタン（時間外）
                     </button>
                     <button id="late-btn" onclick="recordAttendance('late')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all hidden cursor-pointer shadow-md shadow-amber-500/10">
                         ⚠️ 遅刻を記録する
                     </button>
                 </div>
-                <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 hover:text-rose-500 underline cursor-pointer transition-all hidden">
-                    ↩️ 間間違えて押した（記録を取り消す）
+                <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 underline font-bold cursor-pointer transition-all hidden">
+                    ↩️ 間違えて押した（記録を取り消す）
                 </button>
-                <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium py-2 px-4 rounded-xl text-sm transition-all hidden">
+                <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-2 px-4 rounded-xl text-sm transition-all hidden border dark:border-slate-700">
                     💤 この授業を欠席する
                 </button>
             </div>
         </div>
 
-        <!-- 時間割表タブ -->
-        <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-100 hidden overflow-x-auto">
-            <h2 class="text-lg font-bold text-slate-900 mb-1 text-center">今期の時間割一覧</h2>
-            <p class="text-[10px] text-slate-400 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
+        <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-200 hidden overflow-x-auto">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white mb-1 text-center">今期の時間割一覧</h2>
+            <p class="text-[10px] text-slate-400 dark:text-slate-400 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
             
             <table class="w-full text-center border-collapse text-xs">
                 <thead>
-                    <tr class="bg-slate-100 text-slate-600 dark-grid-head">
+                    <tr class="bg-slate-100 text-slate-700 dark-grid-head font-bold">
                         <th class="py-2 border border-slate-200 w-10">限</th>
                         <th class="py-2 border border-slate-200">月</th>
                         <th class="py-2 border border-slate-200">火</th>
@@ -130,15 +144,14 @@
             </table>
         </div>
 
-        <!-- 登録・編集タブ -->
-        <div id="view-edit" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 hidden">
-            <h2 class="text-xl font-bold text-slate-900 mb-4">⚙️ 時間割の登録・編集</h2>
+        <div id="view-edit" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-200 hidden">
+            <h2 class="text-xl font-black text-slate-900 dark:text-white mb-4">⚙️ 時間割の登録・編集</h2>
             
             <form onsubmit="saveTimetable(event)" class="space-y-4">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">曜日</label>
-                        <select id="input-day" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">曜日</label>
+                        <select id="input-day" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm text-slate-800">
                             <option value="1">月曜日</option>
                             <option value="2">火曜日</option>
                             <option value="3">水曜日</option>
@@ -147,8 +160,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">時限</label>
-                        <select id="input-period" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">時限</label>
+                        <select id="input-period" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm text-slate-800">
                             <option value="1">1限 (8:45〜)</option>
                             <option value="2">2限 (10:30〜)</option>
                             <option value="3">3限 (13:15〜)</option>
@@ -159,14 +172,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">講義名</label>
-                    <input type="text" id="input-name" required placeholder="例：基礎有機化学" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">講義名</label>
+                    <input type="text" id="input-name" required placeholder="例：基礎有機化学" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">建物（マップ連動）</label>
-                        <select id="input-building" onchange="toggleCustomInput()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">建物（マップ連動）</label>
+                        <select id="input-building" onchange="toggleCustomInput()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm text-slate-800">
                             <option value="kyo-kita">共北</option>
                             <option value="kyo-minami">共南</option>
                             <option value="kyo-nishi">共西</option>
@@ -181,29 +194,28 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">教室（詳細）</label>
-                        <input type="text" id="input-room" required placeholder="例：32" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">教室（詳細）</label>
+                        <input type="text" id="input-room" required placeholder="例：32" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                     </div>
                 </div>
 
-                <!-- 手動入力用のエリア -->
-                <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200">
+                <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">手動入力：建物名（画面表示用）</label>
-                        <input type="text" id="input-custom-name" placeholder="例：北部総合館" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">手動入力：建物名（画面表示用）</label>
+                        <input type="text" id="input-custom-name" placeholder="例：北部総合館" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs font-bold text-slate-600">手動入力：マップ埋め込みコード（任意）</label>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">手動入力：マップ埋め込みコード（任意）</label>
                             <span class="text-[10px] text-slate-400">空欄でも保存できます</span>
                         </div>
-                        <textarea id="input-custom-iframe" rows="3" placeholder='<iframe src="https://..." ...></iframe>' class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-cyan-600 font-mono text-slate-800"></textarea>
+                        <textarea id="input-custom-iframe" rows="3" placeholder='<iframe src="https://..." ...></iframe>' class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:outline-cyan-600 font-mono text-slate-800"></textarea>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">行き方ナビ（メモ）</label>
-                    <textarea id="input-nav" rows="2" placeholder="例：総合館の4階。階段上がって右奥。" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800"></textarea>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">行き方ナビ（メモ）</label>
+                    <textarea id="input-nav" rows="2" placeholder="例：総合館の4階。階段上がって右奥。" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800"></textarea>
                 </div>
 
                 <div class="flex flex-col space-y-2 pt-2">
@@ -211,14 +223,14 @@
                         💾 変更を保存する
                     </button>
                     
-                    <button type="button" id="delete-btn" onclick="deleteClass()" class="w-full bg-rose-50 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm transition-all cursor-pointer hidden">
+                    <button type="button" id="delete-btn" onclick="deleteClass()" class="w-full bg-rose-50 hover:bg-rose-900 text-rose-600 dark:text-rose-400 font-bold py-2 px-4 rounded-lg text-sm transition-all cursor-pointer hidden border dark:border-rose-800">
                         🗑️ このマスの授業を削除
                     </button>
                 </div>
             </form>
 
-            <div class="mt-8 border-t border-slate-100 pt-4">
-                <button onclick="clearAllData()" class="w-full text-slate-300 hover:text-slate-500 text-[10px] text-center tracking-widest uppercase transition-all cursor-pointer">
+            <div class="mt-8 border-t border-slate-200 dark:border-slate-800 pt-4">
+                <button onclick="clearAllData()" class="w-full text-slate-400 hover:text-slate-600 text-[10px] text-center tracking-widest uppercase transition-all cursor-pointer">
                     ⚠️ アプリの全データを初期化（リセット）
                 </button>
             </div>
@@ -226,46 +238,45 @@
 
     </main>
 
-    <!-- 📱 詳細ポップアップモーダル -->
-    <div id="detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden" onclick="closeDetailModal()">
+    <div id="detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden" onclick="closeDetailModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs space-y-4 transform transition-all select-none dark-modal" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center">
-                <span id="modal-slot-label" class="text-xs font-bold text-cyan-800 bg-cyan-50 px-2 py-1 rounded-md border border-cyan-100"></span>
-                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">✕</button>
+                <span id="modal-slot-label" class="text-xs font-bold text-cyan-800 bg-cyan-50 dark:text-cyan-300 dark:bg-cyan-950 px-2 py-1 rounded-md border border-cyan-200 dark:border-cyan-800"></span>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1 cursor-pointer">✕</button>
             </div>
             
             <div>
-                <h3 id="modal-class-name" class="text-lg font-black text-slate-900 leading-tight mb-1"></h3>
-                <p id="modal-class-room" class="text-sm text-amber-600 font-semibold"></p>
+                <h3 id="modal-class-name" class="text-lg font-black text-slate-900 dark:text-white leading-tight mb-1"></h3>
+                <p id="modal-class-room" class="text-sm text-amber-600 dark:text-amber-400 font-bold"></p>
             </div>
 
-            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-around text-center text-xs">
+            <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex justify-around text-center text-xs">
                 <div>
                     <span class="block text-[10px] text-slate-400 font-bold mb-0.5">出席</span>
-                    <span id="modal-count-present" class="text-base font-black text-cyan-600">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span id="modal-count-present" class="text-base font-black text-cyan-600 dark:text-cyan-400">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200"></div>
+                <div class="border-l border-slate-200 dark:border-slate-800"></div>
                 <div>
                     <span class="block text-[10px] text-slate-400 font-bold mb-0.5">遅刻</span>
-                    <span id="modal-count-late" class="text-base font-black text-amber-500">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span id="modal-count-late" class="text-base font-black text-amber-500 dark:text-amber-400">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200"></div>
+                <div class="border-l border-slate-200 dark:border-slate-800"></div>
                 <div>
                     <span class="block text-[10px] text-slate-400 font-bold mb-1">欠席</span>
-                    <span id="modal-count-absent" class="text-base font-black text-rose-500">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span id="modal-count-absent" class="text-base font-black text-rose-500 dark:text-rose-400">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
             </div>
 
             <div>
                 <span class="block text-[10px] text-slate-400 font-bold mb-1">🗺️ 行き方メモ</span>
-                <p id="modal-class-nav" class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 min-h-[40px] whitespace-pre-wrap"></p>
+                <p id="modal-class-nav" class="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 min-h-[40px] whitespace-pre-wrap"></p>
             </div>
 
             <div class="flex space-x-2 pt-1.5">
-                <button onclick="closeDetailModal()" class="w-1/2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
+                <button onclick="closeDetailModal()" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all border dark:border-slate-700 cursor-pointer">
                     ❌ 閉じる
                 </button>
-                <button id="modal-edit-btn" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-cyan-600/10 transition-all cursor-pointer">
+                <button id="modal-edit-btn" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all cursor-pointer">
                     ⚙️ この授業を編集
                 </button>
             </div>
@@ -300,7 +311,7 @@
 
         const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
-        // 🌗 超強力版・ダークモード制御ロジック
+        // 🌗 高コントラスト版・ダークモード制御ロジック
         function initTheme() {
             const savedTheme = localStorage.getItem('ku_theme');
             const btn = document.getElementById('theme-btn');
@@ -320,7 +331,6 @@
             document.getElementById('theme-btn').innerText = isDark ? "☀️" : "🌙";
         }
 
-        // 初期ロード時に適用
         initTheme();
 
         function toggleMap() {
@@ -444,26 +454,27 @@
             periods.forEach(p => {
                 const tr = document.createElement('tr');
                 const tdLabel = document.createElement('td');
-                tdLabel.className = "py-4 border border-slate-200 bg-slate-50 font-bold text-slate-500 dark-grid-label";
+                tdLabel.className = "py-4 border border-slate-200 bg-slate-100 text-slate-800 font-bold dark-grid-label";
                 tdLabel.innerText = p;
                 tr.appendChild(tdLabel);
 
                 for (let d = 1; d <= 5; d++) {
                     const td = document.createElement('td');
-                    td.className = "p-2 border border-slate-200 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 select-none text-[10px]";
+                    td.className = "p-2 border border-slate-200 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 select-none text-[10px]";
                     td.setAttribute('onclick', `handleGridClick(${d}, '${p}')`);
 
                     const match = timetable.find(item => item.day === d && item.period === p);
 
                     if (match) {
-                        td.className += " bg-cyan-50/80 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-100";
+                        // ダークモード時に黒背景の上でも文字線が完全に浮き出る明るめの紺枠セルに設定
+                        td.className += " bg-cyan-50/90 text-cyan-950 dark:bg-cyan-900/40 dark:text-cyan-50 dark:border-cyan-700";
                         let bName = "学内";
                         if (match.building === 'custom') {
                             bName = match.customBuildingName || "自由入力";
                         } else if (buildingMaster[match.building]) {
                             bName = buildingMaster[match.building].name;
                         }
-                        td.innerHTML = `<div class="font-bold leading-tight break-all text-[11px]">${match.name}</div><div class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 truncate">📍${bName} ${match.room}</div><div class="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 font-mono">出:${match.present} 遅:${match.late || 0} 欠:${match.absent}</div>`;
+                        td.innerHTML = `<div class="font-black leading-tight break-all text-[11px] dark:text-cyan-200">${match.name}</div><div class="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-0.5 truncate">📍${bName} ${match.room}</div><div class="text-[9px] text-slate-500 dark:text-slate-300 font-mono mt-0.5 font-bold">出:${match.present} 遅:${match.late || 0} 欠:${match.absent}</div>`;
                     } else {
                         td.className += " text-slate-300 dark-grid-cell-empty text-xs";
                         td.innerText = "＋";
@@ -649,7 +660,7 @@
                     pingEl.classList.add('hidden');
                     btnEl.innerText = `🕒 時間外（${currentActiveClass.period}限の開始15分前から受付）`;
                     btnEl.disabled = true;
-                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-sm cursor-not-allowed";
+                    btnEl.className = "w-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold py-4 px-4 rounded-xl text-sm cursor-not-allowed border dark:border-slate-700";
                     lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.add('hidden');
                 } else {
                     labelEl.innerText = `🔴 現在の授業 (${currentActiveClass.period}限)`;
@@ -658,9 +669,9 @@
                     const hasPressedThisSlot = currentActiveClass.hasPressed;
 
                     if (hasPressedThisSlot) {
-                        let statusText = hasPressedThisSlot === 'late' ? "遅刻" : (hasPressedThisSlot === 'absent' ? "欠席" : "出席");
+                        let statusText = hasPressedThisSlot === 'late' ? "遅刻" : (hasPressedThisSlot === 'absent' ? "欠寝" : "出席");
                         btnEl.innerText = `✓ ${statusText}記録済み`; btnEl.disabled = true;
-                        btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                        btnEl.className = "w-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed border dark:border-slate-700";
                         lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.remove('hidden');
                     } else {
                         btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`; btnEl.disabled = false;
@@ -673,7 +684,7 @@
                 nameEl.innerText = "時間割が未登録です"; roomEl.innerText = "📍 -";
                 navEl.innerText = "「時間割表」から授業を入力してください！";
                 btnEl.innerText = "🔴 出席ボタン（時間外）"; btnEl.disabled = true;
-                btnEl.className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                btnEl.className = "w-full bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
                 mapIframe.src = buildingMaster["kyo-kita"].embedUrl;
                 lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.add('hidden'); counterBox.classList.add('hidden');
             }
