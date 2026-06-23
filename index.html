@@ -26,10 +26,10 @@
             <div class="flex items-center justify-between text-sm text-cyan-700 font-semibold">
                 <div class="flex items-center space-x-2">
                     <span class="flex h-2 w-2 relative">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                        <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                        <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                     </span>
-                    <span id="status-label">現在の次の授業</span>
+                    <span id="status-label">現在の授業</span>
                 </div>
                 <span id="current-time-display" class="text-slate-400 font-normal"></span>
             </div>
@@ -228,6 +228,8 @@
             "5": { startHour: 16, startMin: 45, endHour: 18, endMin: 15 }
         };
 
+        const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
         function toggleMap() {
             const container = document.getElementById('map-container');
             const btn = document.getElementById('map-toggle-btn');
@@ -254,6 +256,7 @@
 
         let timetable = JSON.parse(localStorage.getItem('kyodai_timetable')) || [];
         let currentActiveClass = null;
+        let isPreviewMode = false; // 予告表示モードかどうかのフラグ
 
         function switchTab(tabName) {
             const views = ['nav', 'table', 'edit'];
@@ -394,7 +397,7 @@
             const presentCount = existing ? (existing.present || 0) : 0;
             const lateCount = existing ? (existing.late || 0) : 0;
             const absentCount = existing ? (existing.absent || 0) : 0;
-            const hasPressed = existing ? (existing.hasPressed || null) : null; // 重複ロック状態も引き継ぐ
+            const hasPressed = existing ? (existing.hasPressed || null) : null;
 
             timetable = timetable.filter(item => !(item.day === day && item.period === period));
 
@@ -424,7 +427,7 @@
         }
 
         function recordAttendance(type) {
-            if (!currentActiveClass) return;
+            if (!currentActiveClass || isPreviewMode) return; // 予告表示中は記録不可
             
             const now = new Date();
             const nowTotal = now.getHours() * 60 + now.getMinutes();
@@ -441,7 +444,7 @@
                     if (type === 'present') item.present = (item.present || 0) + 1;
                     if (type === 'late') item.late = (item.late || 0) + 1;
                     if (type === 'absent') item.absent = (item.absent || 0) + 1;
-                    item.hasPressed = type; // ボタンが押されたフラグを永続化保存
+                    item.hasPressed = type;
                 }
                 return item;
             });
@@ -450,9 +453,8 @@
         }
 
         function undoAttendance() {
-            if (!currentActiveClass) return;
+            if (!currentActiveClass || isPreviewMode) return;
             
-            // 現在の授業データから保存されているフラグを取得
             const target = timetable.find(item => item.id === currentActiveClass.id);
             if (!target || !target.hasPressed) return;
 
@@ -463,12 +465,42 @@
                     if (pressedType === 'present' && item.present > 0) item.present--;
                     if (pressedType === 'late' && item.late > 0) item.late--;
                     if (pressedType === 'absent' && item.absent > 0) item.absent--;
-                    item.hasPressed = null; // フラグをクリア
+                    item.hasPressed = null;
                 }
                 return item;
             });
             localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
             updateApp();
+        }
+
+        // 先読み予告オブジェクトを探すスマートロジック
+        function findNextClass(currentDay, currentHour, currentMin) {
+            if (timetable.length === 0) return null;
+
+            const nowTotal = currentHour * 60 + currentMin;
+
+            // 1. 今日の残りの時限から探す
+            let todayClasses = timetable.filter(item => item.day === currentDay);
+            todayClasses.sort((a, b) => parseInt(a.period) - parseInt(b.period));
+            for (let item of todayClasses) {
+                const startTotal = item.startHour * 60 + item.startMin;
+                if (nowTotal < startTotal) {
+                    return { item: item, isToday: true };
+                }
+            }
+
+            // 2. 明日以降〜直近の曜日から探す (最大7日後までループ)
+            for (let i = 1; i <= 7; i++) {
+                let checkDay = (currentDay + i) % 7;
+                if (checkDay === 0 || checkDay === 6) continue; // 土日はスキップ
+                
+                let nextDayClasses = timetable.filter(item => item.day === checkDay);
+                if (nextDayClasses.length > 0) {
+                    nextDayClasses.sort((a, b) => parseInt(a.period) - parseInt(b.period));
+                    return { item: nextDayClasses[0], isToday: false };
+                }
+            }
+            return null;
         }
 
         function updateApp() {
@@ -480,7 +512,10 @@
             document.getElementById('current-time-display').innerText = `${currentHour}:${String(currentMin).padStart(2, '0')}`;
 
             currentActiveClass = null;
+            isPreviewMode = false;
+            let previewDayLabel = "";
 
+            // A. まず「現在アクティブな授業（開始15分前〜終了まで）」を探す
             for (let item of timetable) {
                 if (item.day === currentDay) {
                     const startTotal = item.startHour * 60 + item.startMin - 15;
@@ -494,9 +529,19 @@
                 }
             }
 
-            // 週が変わるか、該当の授業時間を超えて誰も登録していない時間帯になったらロック解除を判定
-            // (今回は現在の授業枠（currentActiveClass）が存在する間のロック状態を永続データから確認します)
+            // B. アクティブな授業がない場合、「先読み予告（NEXT STAGE）」を作動させる
+            if (!currentActiveClass) {
+                const nextData = findNextClass(currentDay, currentHour, currentMin);
+                if (nextData) {
+                    currentActiveClass = nextData.item;
+                    isPreviewMode = true;
+                    previewDayLabel = nextData.isToday ? "今日の次の授業" : `次の授業 (${dayNames[nextData.item.day]}曜日)`;
+                }
+            }
 
+            const labelEl = document.getElementById('status-label');
+            const dotEl = document.getElementById('status-dot');
+            const pingEl = document.getElementById('status-ping');
             const nameEl = document.getElementById('class-name');
             const roomEl = document.getElementById('class-room');
             const navEl = document.getElementById('class-nav');
@@ -539,45 +584,72 @@
                 document.getElementById('count-late').innerText = currentActiveClass.late || 0;
                 document.getElementById('count-absent').innerText = currentActiveClass.absent || 0;
 
-                const nowTotal = currentHour * 60 + currentMin;
-                const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
-                
-                // メモリ空間ではなく、保存データ(hasPressed)から状態を読み取る
-                const hasPressedThisSlot = currentActiveClass.hasPressed;
+                if (isPreviewMode) {
+                    // 【予告表示中のデザイン・ボタン制御】
+                    labelEl.innerText = `⏭️ ${previewDayLabel} (${currentActiveClass.period}限)`;
+                    labelEl.className = "text-amber-600 font-bold flex items-center";
+                    dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+                    pingEl.classList.add('hidden'); // 動くアニメーションは隠す
 
-                if (hasPressedThisSlot) {
-                    let statusText = "出席";
-                    if (hasPressedThisSlot === 'late') statusText = "遅刻";
-                    if (hasPressedThisSlot === 'absent') statusText = "欠席";
-
-                    btnEl.innerText = `✓ ${statusText}記録済み`;
+                    btnEl.innerText = `🕒 時間外（${currentActiveClass.period}限の開始15分前から受付）`;
                     btnEl.disabled = true;
-                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-sm cursor-not-allowed";
                     
                     lateBtn.classList.add('hidden');
                     absentBtn.classList.add('hidden');
-                    undoBtn.classList.remove('hidden');
-                } else if (nowTotal >= classStartTotal - 15) {
-                    btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`;
-                    btnEl.disabled = false;
-                    btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-cyan-600/20 active:scale-98 transition-all text-lg cursor-pointer";
-                    
-                    lateBtn.classList.remove('hidden');
-                    absentBtn.classList.remove('hidden');
                     undoBtn.classList.add('hidden');
+
                 } else {
-                    btnEl.innerText = "🕒 時間外（開始15分前から受付）";
-                    btnEl.disabled = true;
-                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
-                    
-                    lateBtn.classList.add('hidden');
-                    absentBtn.classList.add('hidden');
-                    undoBtn.classList.add('hidden');
+                    // 【リアルタイム授業中のデザイン・ボタン制御】
+                    labelEl.innerText = `🔴 現在の授業 (${currentActiveClass.period}限)`;
+                    labelEl.className = "text-cyan-700 font-bold flex items-center";
+                    dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-cyan-500";
+                    pingEl.classList.remove('hidden');
+
+                    const nowTotal = currentHour * 60 + currentMin;
+                    const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
+                    const hasPressedThisSlot = currentActiveClass.hasPressed;
+
+                    if (hasPressedThisSlot) {
+                        let statusText = "出席";
+                        if (hasPressedThisSlot === 'late') statusText = "遅刻";
+                        if (hasPressedThisSlot === 'absent') statusText = "欠席";
+
+                        btnEl.innerText = `✓ ${statusText}記録済み`;
+                        btnEl.disabled = true;
+                        btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                        
+                        lateBtn.classList.add('hidden');
+                        absentBtn.classList.add('hidden');
+                        undoBtn.classList.remove('hidden');
+                    } else if (nowTotal >= classStartTotal - 15) {
+                        btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`;
+                        btnEl.disabled = false;
+                        btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-cyan-600/20 active:scale-98 transition-all text-lg cursor-pointer";
+                        
+                        lateBtn.classList.remove('hidden');
+                        absentBtn.classList.remove('hidden');
+                        undoBtn.classList.add('hidden');
+                    } else {
+                        btnEl.innerText = "🕒 時間外（開始15分前から受付）";
+                        btnEl.disabled = true;
+                        btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                        
+                        lateBtn.classList.add('hidden');
+                        absentBtn.classList.add('hidden');
+                        undoBtn.classList.add('hidden');
+                    }
                 }
             } else {
-                nameEl.innerText = "次の授業はありません";
+                // 時間割データが1つも登録されていない場合の表示
+                labelEl.innerText = "授業データがありません";
+                labelEl.className = "text-slate-400 font-normal";
+                dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-300";
+                pingEl.classList.add('hidden');
+
+                nameEl.innerText = "時間割が未登録です";
                 roomEl.innerText = "📍 -";
-                navEl.innerText = "登録された時間割に該当する授業がないか、時間外です。「時間割表」のマス目をタップして入力してください！";
+                navEl.innerText = "「時間割表」のマス目をタップして、今期の授業情報を入力してください！";
                 btnEl.innerText = "🔴 出席ボタン（時間外）";
                 btnEl.disabled = true;
                 btnEl.className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
@@ -591,7 +663,7 @@
                 undoBtn.classList.add('hidden');
                 counterBox.classList.add('hidden');
 
-                // 授業時間外になったら、すべてのマスの重複フラグ(hasPressed)を一斉に解除して来週に備える
+                // 授業が全くない時は全マスのフラグを一斉解除
                 let needSave = false;
                 timetable = timetable.map(item => {
                     if (item.hasPressed) {
