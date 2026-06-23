@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>京大生のための講義室＆出席ナビ</title>
+    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         /* 🌗 高コントラスト・ダークモード（.dark）時の完全上書き指定 */
@@ -34,6 +35,11 @@
         .dark input:focus, .dark select:focus, .dark textarea:focus {
             outline: 2px solid #22d3ee !important;
         }
+
+        /* 🌤️ 天気ウィジェットのカラー制御（ダークモード連動） */
+        .dark .weather-widget-wrapper {
+            filter: invert(0.9) hue-rotate(180deg);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between transition-colors duration-200">
@@ -41,8 +47,14 @@
     <header class="bg-cyan-900 text-white py-4 px-6 shadow-md relative">
         <div class="max-w-md mx-auto flex flex-col items-center w-full space-y-3">
             <div class="flex justify-between items-center w-full">
-                <div class="w-8"></div>
-                <h1 class="text-xl font-bold tracking-wider">KU 講義ナビ</h1>
+                <!-- 🌤️ 左側：吉田キャンパス（左京区）のリアルタイム天気ウィジェット -->
+                <div class="weather-widget-wrapper w-32 h-10 overflow-hidden rounded-lg bg-cyan-950/40 flex items-center justify-center border border-cyan-800/50">
+                    <iframe src="https://www.jma.go.jp/bosai/wdist/index.html#code=260010&area=260000" class="w-full h-24 -mt-7 scale-85 origin-top border-0 pointer-events-none" scrolling="no"></iframe>
+                </div>
+
+                <h1 class="text-lg font-bold tracking-wider -ml-2">KU 講義ナビ</h1>
+
+                <!-- 🌙 右側：ダークモード切り替えボタン -->
                 <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-cyan-950 hover:bg-cyan-800 flex items-center justify-center text-lg cursor-pointer transition-all shadow-inner border border-cyan-800" id="theme-btn" title="テーマ切り替え">
                     🌙
                 </button>
@@ -58,6 +70,7 @@
 
     <main class="flex-grow p-4 flex flex-col justify-start items-center max-w-md mx-auto w-full">
         
+        <!-- ナビタブ -->
         <div id="view-nav" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-200 space-y-6">
             <div class="flex items-center justify-between text-sm text-cyan-700 dark:text-cyan-400 font-bold" id="nav-status-header">
                 <div class="flex items-center space-x-2">
@@ -75,6 +88,7 @@
                 <p id="class-room" class="text-lg text-amber-600 dark:text-amber-400 font-bold">📍 -</p>
             </div>
 
+            <!-- カウンターボックス -->
             <div id="attendance-counter-box" class="bg-cyan-50/50 dark:bg-slate-950 border border-cyan-100 dark:border-slate-800 rounded-xl p-4 flex justify-around text-center hidden">
                 <div class="w-1/3">
                     <span class="block text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">出席</span>
@@ -107,6 +121,7 @@
                 <p id="class-nav">「時間割表」のマスをクリックして授業を入力してください！</p>
             </div>
 
+            <!-- アクションボタンエリア -->
             <div id="action-buttons" class="space-y-3 text-center">
                 <div id="main-buttons-box" class="flex flex-col space-y-2">
                     <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
@@ -125,6 +140,7 @@
             </div>
         </div>
 
+        <!-- 時間割表タブ -->
         <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-200 hidden overflow-x-auto">
             <h2 class="text-lg font-black text-slate-900 dark:text-white mb-1 text-center">今期の時間割一覧</h2>
             <p class="text-[10px] text-slate-400 dark:text-slate-400 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
@@ -144,6 +160,7 @@
             </table>
         </div>
 
+        <!-- 登録・編集タブ -->
         <div id="view-edit" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-200 hidden">
             <h2 class="text-xl font-black text-slate-900 dark:text-white mb-4">⚙️ 時間割の登録・編集</h2>
             
@@ -199,6 +216,7 @@
                     </div>
                 </div>
 
+                <!-- 手動入力用のエリア -->
                 <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">手動入力：建物名（画面表示用）</label>
@@ -238,6 +256,7 @@
 
     </main>
 
+    <!-- 📱 詳細ポップアップモーダル -->
     <div id="detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden" onclick="closeDetailModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs space-y-4 transform transition-all select-none dark-modal" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center">
@@ -466,7 +485,6 @@
                     const match = timetable.find(item => item.day === d && item.period === p);
 
                     if (match) {
-                        // ダークモード時に黒背景の上でも文字線が完全に浮き出る明るめの紺枠セルに設定
                         td.className += " bg-cyan-50/90 text-cyan-950 dark:bg-cyan-900/40 dark:text-cyan-50 dark:border-cyan-700";
                         let bName = "学内";
                         if (match.building === 'custom') {
