@@ -4,23 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>京大生のための講義室＆出席ナビ</title>
+    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* ダークモード時のカスタムスタイル補正 */
+        /* 手動補正用のスタイル：ダークモード（.dark）時の色の強制指定 */
+        .dark body { background-color: #020617 !important; color: #f8fafc !important; }
+        .dark #view-nav, .dark #view-table, .dark #view-edit { background-color: #0f172a !important; border-color: #1e293b !important; }
         .dark .dark-grid-head { background-color: #1e293b !important; color: #94a3b8 !important; }
         .dark .dark-grid-label { background-color: #1e293b !important; color: #94a3b8 !important; }
         .dark .dark-grid-cell-empty { color: #475569 !important; }
         .dark .dark-modal { background-color: #1e293b !important; color: #f1f5f9 !important; }
+        .dark input, .dark select, .dark textarea { background-color: #020617 !important; color: #f8fafc !important; border-color: #1e293b !important; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans min-h-screen flex flex-col justify-between transition-colors duration-200">
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between transition-colors duration-200">
 
     <header class="bg-cyan-900 text-white py-4 px-6 shadow-md relative">
         <div class="max-w-md mx-auto flex flex-col items-center w-full space-y-3">
             <div class="flex justify-between items-center w-full">
                 <div class="w-8"></div>
                 <h1 class="text-xl font-bold tracking-wider">KU 講義ナビ</h1>
-                <button onclick="toggleDarkMode()" class="w-8 h-8 rounded-lg bg-cyan-950 hover:bg-cyan-800 flex items-center justify-center text-sm cursor-pointer transition-all" id="theme-btn" title="テーマ切り替え">
+                <!-- 🌙 ダークモード切り替えボタン -->
+                <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-cyan-950 hover:bg-cyan-800 flex items-center justify-center text-lg cursor-pointer transition-all shadow-inner" id="theme-btn" title="テーマ切り替え">
                     🌙
                 </button>
             </div>
@@ -35,8 +40,9 @@
 
     <main class="flex-grow p-4 flex flex-col justify-start items-center max-w-md mx-auto w-full">
         
-        <div id="view-nav" class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 w-full border border-slate-100 dark:border-slate-800 space-y-6">
-            <div class="flex items-center justify-between text-sm text-cyan-700 dark:text-cyan-400 font-semibold">
+        <!-- ナビタブ -->
+        <div id="view-nav" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 space-y-6">
+            <div class="flex items-center justify-between text-sm text-cyan-700 font-semibold" id="nav-status-header">
                 <div class="flex items-center space-x-2">
                     <span class="flex h-2 w-2 relative">
                         <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -44,91 +50,95 @@
                     </span>
                     <span id="status-label">現在の授業</span>
                 </div>
-                <span id="current-time-display" class="text-slate-400 dark:text-slate-500 font-normal"></span>
+                <span id="current-time-display" class="text-slate-400 font-normal"></span>
             </div>
 
             <div>
-                <h2 id="class-name" class="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-1">授業がありません</h2>
-                <p id="class-room" class="text-lg text-amber-600 dark:text-amber-400 font-medium">📍 -</p>
+                <h2 id="class-name" class="text-2xl font-bold text-slate-900 mb-1">授業がありません</h2>
+                <p id="class-room" class="text-lg text-amber-600 font-medium">📍 -</p>
             </div>
 
-            <div id="attendance-counter-box" class="bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-100 dark:border-cyan-900 rounded-xl p-4 flex justify-around text-center hidden">
+            <!-- カウンターボックス -->
+            <div id="attendance-counter-box" class="bg-cyan-50/50 border border-cyan-100 rounded-xl p-4 flex justify-around text-center hidden">
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">出席</span>
-                    <span id="count-present" class="text-2xl font-black text-cyan-600 dark:text-cyan-400">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">出席</span>
+                    <span id="count-present" class="text-2xl font-black text-cyan-600">0</span><span class="text-xs text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200 dark:border-slate-800"></div>
+                <div class="border-l border-slate-200"></div>
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">遅刻</span>
-                    <span id="count-late" class="text-2xl font-black text-amber-500 dark:text-amber-400">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">遅刻</span>
+                    <span id="count-late" class="text-2xl font-black text-amber-500">0</span><span class="text-xs text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200 dark:border-slate-800"></div>
+                <div class="border-l border-slate-200"></div>
                 <div class="w-1/3">
-                    <span class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">欠席</span>
-                    <span id="count-absent" class="text-2xl font-black text-rose-500 dark:text-rose-400">0</span><span class="text-xs text-slate-500">回</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">欠席</span>
+                    <span id="count-absent" class="text-2xl font-black text-rose-500">0</span><span class="text-xs text-slate-500">回</span>
                 </div>
             </div>
 
             <div class="space-y-3">
-                <button id="map-toggle-btn" onclick="toggleMap()" class="w-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-bold">
+                <button id="map-toggle-btn" onclick="toggleMap()" class="w-full text-xs bg-slate-100 text-slate-600 py-2 rounded-lg hover:bg-slate-200 transition-all font-bold">
                     🗺️ キャンパスマップを表示
                 </button>
-                <div id="map-container" class="hidden w-full h-[250px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                <div id="map-container" class="hidden w-full h-[250px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
                     <iframe id="map-iframe" class="w-full h-full" src="" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
-                    <div id="map-error-message" class="hidden text-slate-400 dark:text-slate-500 text-sm font-medium tracking-wide">🗺️ 地図を取得できませんでした</div>
+                    <div id="map-error-message" class="hidden text-slate-400 text-sm font-medium tracking-wide">🗺️ 地図を取得できませんでした</div>
                 </div>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-900">
-                <p class="font-semibold text-slate-700 dark:text-slate-200 mb-1">🗺️ 行き方ナビ</p>
+            <div class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 border border-slate-100">
+                <p class="font-semibold text-slate-700 mb-1">🗺️ 行き方ナビ</p>
                 <p id="class-nav">「時間割表」のマスをクリックして授業を入力してください！</p>
             </div>
 
+            <!-- アクションボタンエリア -->
             <div id="action-buttons" class="space-y-3 text-center">
                 <div id="main-buttons-box" class="flex flex-col space-y-2">
-                    <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-600 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
+                    <button id="attendance-btn" onclick="recordAttendance('present')" disabled class="w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed">
                         🔴 出席ボタン（時間外）
                     </button>
                     <button id="late-btn" onclick="recordAttendance('late')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all hidden cursor-pointer shadow-md shadow-amber-500/10">
                         ⚠️ 遅刻を記録する
                     </button>
                 </div>
-                <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 dark:text-slate-500 hover:text-rose-500 underline cursor-pointer transition-all hidden">
-                    ↩️ 間違えて押した（記録を取り消す）
+                <button id="undo-btn" onclick="undoAttendance()" class="text-xs text-slate-400 hover:text-rose-500 underline cursor-pointer transition-all hidden">
+                    ↩️ 間間違えて押した（記録を取り消す）
                 </button>
-                <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium py-2 px-4 rounded-xl text-sm transition-all hidden">
+                <button id="absent-btn" onclick="recordAttendance('absent')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium py-2 px-4 rounded-xl text-sm transition-all hidden">
                     💤 この授業を欠席する
                 </button>
             </div>
         </div>
 
-        <div id="view-table" class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-4 w-full border border-slate-100 dark:border-slate-800 hidden overflow-x-auto">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-50 mb-1 text-center">今期の時間割一覧</h2>
-            <p class="text-[10px] text-slate-400 dark:text-slate-500 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
+        <!-- 時間割表タブ -->
+        <div id="view-table" class="bg-white rounded-2xl shadow-xl p-4 w-full border border-slate-100 hidden overflow-x-auto">
+            <h2 class="text-lg font-bold text-slate-900 mb-1 text-center">今期の時間割一覧</h2>
+            <p class="text-[10px] text-slate-400 text-center mb-3">※マスをタップすると詳細・出席状況を確認できます</p>
             
             <table class="w-full text-center border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-100 text-slate-600 dark-grid-head">
-                        <th class="py-2 border border-slate-200 dark:border-slate-800 w-10">限</th>
-                        <th class="py-2 border border-slate-200 dark:border-slate-800">月</th>
-                        <th class="py-2 border border-slate-200 dark:border-slate-800">火</th>
-                        <th class="py-2 border border-slate-200 dark:border-slate-800">水</th>
-                        <th class="py-2 border border-slate-200 dark:border-slate-800">木</th>
-                        <th class="py-2 border border-slate-200 dark:border-slate-800">金</th>
+                        <th class="py-2 border border-slate-200 w-10">限</th>
+                        <th class="py-2 border border-slate-200">月</th>
+                        <th class="py-2 border border-slate-200">火</th>
+                        <th class="py-2 border border-slate-200">水</th>
+                        <th class="py-2 border border-slate-200">木</th>
+                        <th class="py-2 border border-slate-200">金</th>
                     </tr>
                 </thead>
                 <tbody id="timetable-grid-body"></tbody>
             </table>
         </div>
 
-        <div id="view-edit" class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 w-full border border-slate-100 dark:border-slate-800 hidden">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-slate-50 mb-4">⚙️ 時間割の登録・編集</h2>
+        <!-- 登録・編集タブ -->
+        <div id="view-edit" class="bg-white rounded-2xl shadow-xl p-6 w-full border border-slate-100 hidden">
+            <h2 class="text-xl font-bold text-slate-900 mb-4">⚙️ 時間割の登録・編集</h2>
             
             <form onsubmit="saveTimetable(event)" class="space-y-4">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">曜日</label>
-                        <select id="input-day" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-800 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">曜日</label>
+                        <select id="input-day" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
                             <option value="1">月曜日</option>
                             <option value="2">火曜日</option>
                             <option value="3">水曜日</option>
@@ -137,8 +147,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">時限</label>
-                        <select id="input-period" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-800 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">時限</label>
+                        <select id="input-period" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
                             <option value="1">1限 (8:45〜)</option>
                             <option value="2">2限 (10:30〜)</option>
                             <option value="3">3限 (13:15〜)</option>
@@ -149,14 +159,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">講義名</label>
-                    <input type="text" id="input-name" required placeholder="例：基礎有機化学" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800 dark:text-slate-100">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">講義名</label>
+                    <input type="text" id="input-name" required placeholder="例：基礎有機化学" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">建物（マップ連動）</label>
-                        <select id="input-building" onchange="toggleCustomInput()" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-800 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">建物（マップ連動）</label>
+                        <select id="input-building" onchange="toggleCustomInput()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm text-slate-800">
                             <option value="kyo-kita">共北</option>
                             <option value="kyo-minami">共南</option>
                             <option value="kyo-nishi">共西</option>
@@ -171,28 +181,29 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">教室（詳細）</label>
-                        <input type="text" id="input-room" required placeholder="例：32" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">教室（詳細）</label>
+                        <input type="text" id="input-room" required placeholder="例：32" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                     </div>
                 </div>
 
-                <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                <!-- 手動入力用のエリア -->
+                <div id="custom-building-box" class="hidden space-y-4 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">手動入力：建物名（画面表示用）</label>
-                        <input type="text" id="input-custom-name" placeholder="例：北部総合館" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">手動入力：建物名（画面表示用）</label>
+                        <input type="text" id="input-custom-name" placeholder="例：北部総合館" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800">
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400">手動入力：マップ埋め込みコード（任意）</label>
+                            <label class="block text-xs font-bold text-slate-600">手動入力：マップ埋め込みコード（任意）</label>
                             <span class="text-[10px] text-slate-400">空欄でも保存できます</span>
                         </div>
-                        <textarea id="input-custom-iframe" rows="3" placeholder='<iframe src="https://..." ...></iframe>' class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-cyan-600 font-mono text-slate-800 dark:text-slate-100"></textarea>
+                        <textarea id="input-custom-iframe" rows="3" placeholder='<iframe src="https://..." ...></iframe>' class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-cyan-600 font-mono text-slate-800"></textarea>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">行き方ナビ（メモ）</label>
-                    <textarea id="input-nav" rows="2" placeholder="例：総合館の4階。階段上がって右奥。" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800 dark:text-slate-100"></textarea>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">行き方ナビ（メモ）</label>
+                    <textarea id="input-nav" rows="2" placeholder="例：総合館の4階。階段上がって右奥。" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-cyan-600 text-slate-800"></textarea>
                 </div>
 
                 <div class="flex flex-col space-y-2 pt-2">
@@ -200,13 +211,13 @@
                         💾 変更を保存する
                     </button>
                     
-                    <button type="button" id="delete-btn" onclick="deleteClass()" class="w-full bg-rose-50 hover:bg-rose-950 text-rose-600 dark:text-rose-400 font-bold py-2 px-4 rounded-lg text-sm transition-all cursor-pointer hidden">
+                    <button type="button" id="delete-btn" onclick="deleteClass()" class="w-full bg-rose-50 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm transition-all cursor-pointer hidden">
                         🗑️ このマスの授業を削除
                     </button>
                 </div>
             </form>
 
-            <div class="mt-8 border-t border-slate-100 dark:border-slate-900 pt-4">
+            <div class="mt-8 border-t border-slate-100 pt-4">
                 <button onclick="clearAllData()" class="w-full text-slate-300 hover:text-slate-500 text-[10px] text-center tracking-widest uppercase transition-all cursor-pointer">
                     ⚠️ アプリの全データを初期化（リセット）
                 </button>
@@ -215,42 +226,43 @@
 
     </main>
 
+    <!-- 📱 詳細ポップアップモーダル -->
     <div id="detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden" onclick="closeDetailModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs space-y-4 transform transition-all select-none dark-modal" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center">
-                <span id="modal-slot-label" class="text-xs font-bold text-cyan-800 bg-cyan-50 dark:text-cyan-300 dark:bg-cyan-950 px-2 py-1 rounded-md border border-cyan-100 dark:border-cyan-900"></span>
+                <span id="modal-slot-label" class="text-xs font-bold text-cyan-800 bg-cyan-50 px-2 py-1 rounded-md border border-cyan-100"></span>
                 <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">✕</button>
             </div>
             
             <div>
-                <h3 id="modal-class-name" class="text-lg font-black text-slate-900 dark:text-slate-50 leading-tight mb-1"></h3>
-                <p id="modal-class-room" class="text-sm text-amber-600 dark:text-amber-400 font-semibold"></p>
+                <h3 id="modal-class-name" class="text-lg font-black text-slate-900 leading-tight mb-1"></h3>
+                <p id="modal-class-room" class="text-sm text-amber-600 font-semibold"></p>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-900 rounded-xl p-3 flex justify-around text-center text-xs">
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-around text-center text-xs">
                 <div>
                     <span class="block text-[10px] text-slate-400 font-bold mb-0.5">出席</span>
-                    <span id="modal-count-present" class="text-base font-black text-cyan-600 dark:text-cyan-400">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span id="modal-count-present" class="text-base font-black text-cyan-600">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200 dark:border-slate-800"></div>
+                <div class="border-l border-slate-200"></div>
                 <div>
                     <span class="block text-[10px] text-slate-400 font-bold mb-0.5">遅刻</span>
-                    <span id="modal-count-late" class="text-base font-black text-amber-500 dark:text-amber-400">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span id="modal-count-late" class="text-base font-black text-amber-500">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
-                <div class="border-l border-slate-200 dark:border-slate-800"></div>
+                <div class="border-l border-slate-200"></div>
                 <div>
-                    <span class="block text-[10px] text-slate-400 font-bold mb-0.5">欠席</span>
-                    <span id="modal-count-absent" class="text-base font-black text-rose-500 dark:text-rose-400">0</span><span class="text-[10px] text-slate-500">回</span>
+                    <span class="block text-[10px] text-slate-400 font-bold mb-1">欠席</span>
+                    <span id="modal-count-absent" class="text-base font-black text-rose-500">0</span><span class="text-[10px] text-slate-500">回</span>
                 </div>
             </div>
 
             <div>
                 <span class="block text-[10px] text-slate-400 font-bold mb-1">🗺️ 行き方メモ</span>
-                <p id="modal-class-nav" class="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 min-h-[40px] whitespace-pre-wrap"></p>
+                <p id="modal-class-nav" class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 min-h-[40px] whitespace-pre-wrap"></p>
             </div>
 
             <div class="flex space-x-2 pt-1.5">
-                <button onclick="closeDetailModal()" class="w-1/2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
+                <button onclick="closeDetailModal()" class="w-1/2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
                     ❌ 閉じる
                 </button>
                 <button id="modal-edit-btn" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-cyan-600/10 transition-all cursor-pointer">
@@ -288,15 +300,17 @@
 
         const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
-        // 🌗 ダークモード制御ロジック
+        // 🌗 超強力版・ダークモード制御ロジック
         function initTheme() {
             const savedTheme = localStorage.getItem('ku_theme');
+            const btn = document.getElementById('theme-btn');
+            
             if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
-                document.getElementById('theme-btn').innerText = "☀️";
+                if(btn) btn.innerText = "☀️";
             } else {
                 document.documentElement.classList.remove('dark');
-                document.getElementById('theme-btn').innerText = "🌙";
+                if(btn) btn.innerText = "🌙";
             }
         }
 
@@ -306,6 +320,7 @@
             document.getElementById('theme-btn').innerText = isDark ? "☀️" : "🌙";
         }
 
+        // 初期ロード時に適用
         initTheme();
 
         function toggleMap() {
@@ -348,9 +363,6 @@
 
             if (tabName === 'nav') updateApp();
             if (tabName === 'table') generateTimetableGrid();
-            if (tabName === 'edit' && !document.getElementById('input-name').value) {
-                document.getElementById('delete-btn').classList.add('hidden');
-            }
         }
 
         function handleGridClick(day, period) {
@@ -404,14 +416,11 @@
                 
                 if (buildingMaster[match.building]) {
                     document.getElementById('input-building').value = match.building;
-                    document.getElementById('input-custom-name').value = '';
-                    document.getElementById('input-custom-iframe').value = '';
                 } else {
                     document.getElementById('input-building').value = 'custom';
                     document.getElementById('input-custom-name').value = match.customBuildingName || '';
                     document.getElementById('input-custom-iframe').value = match.customEmbedUrl || '';
                 }
-                deleteBtn.style.display = "block";
                 deleteBtn.classList.remove('hidden');
             } else {
                 document.getElementById('input-name').value = '';
@@ -420,7 +429,6 @@
                 document.getElementById('input-nav').value = '';
                 document.getElementById('input-custom-name').value = '';
                 document.getElementById('input-custom-iframe').value = '';
-                deleteBtn.style.display = "none";
                 deleteBtn.classList.add('hidden');
             }
 
@@ -436,19 +444,19 @@
             periods.forEach(p => {
                 const tr = document.createElement('tr');
                 const tdLabel = document.createElement('td');
-                tdLabel.className = "py-4 border border-slate-200 dark:border-slate-800 bg-slate-50 font-bold text-slate-500 dark-grid-label";
+                tdLabel.className = "py-4 border border-slate-200 bg-slate-50 font-bold text-slate-500 dark-grid-label";
                 tdLabel.innerText = p;
                 tr.appendChild(tdLabel);
 
                 for (let d = 1; d <= 5; d++) {
                     const td = document.createElement('td');
-                    td.className = "p-2 border border-slate-200 dark:border-slate-800 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 select-none text-[10px]";
+                    td.className = "p-2 border border-slate-200 h-20 vertical-middle transition-all cursor-pointer hover:bg-slate-100 select-none text-[10px]";
                     td.setAttribute('onclick', `handleGridClick(${d}, '${p}')`);
 
                     const match = timetable.find(item => item.day === d && item.period === p);
 
                     if (match) {
-                        td.className += " bg-cyan-50/80 dark:bg-cyan-950/40 text-cyan-950 dark:text-cyan-100 hover:bg-cyan-100/90 dark:hover:bg-cyan-900/50";
+                        td.className += " bg-cyan-50/80 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-100";
                         let bName = "学内";
                         if (match.building === 'custom') {
                             bName = match.customBuildingName || "自由入力";
@@ -479,10 +487,9 @@
         }
 
         function clearAllData() {
-            if (confirm("【警告】登録したすべての時間割と出席カウントを完全に消去します。よろしいですか？")) {
+            if (confirm("【警告】登録したすべての時間割と出席カウントを完全に消去します。")) {
                 localStorage.removeItem('kyodai_timetable');
                 timetable = [];
-                alert("すべてのデータを初期化しました。");
                 location.reload();
             }
         }
@@ -517,23 +524,11 @@
             timetable = timetable.filter(item => !(item.day === day && item.period === period));
 
             timetable.push({
-                id: `${day}-${period}`,
-                day: day,
-                period: period,
-                name: name,
-                building: building,
-                customBuildingName: customBuildingName,
-                customEmbedUrl: customEmbedUrl,
-                room: room,
-                nav: nav,
-                startHour: timeFrames[period].startHour,
-                startMin: timeFrames[period].startMin,
-                endHour: timeFrames[period].endHour,
-                endMin: timeFrames[period].endMin,
-                present: presentCount,
-                late: lateCount,
-                absent: absentCount,
-                hasPressed: hasPressed
+                id: `${day}-${period}`, day: day, period: period, name: name, building: building,
+                customBuildingName: customBuildingName, customEmbedUrl: customEmbedUrl, room: room, nav: nav,
+                startHour: timeFrames[period].startHour, startMin: timeFrames[period].startMin,
+                endHour: timeFrames[period].endHour, endMin: timeFrames[period].endMin,
+                present: presentCount, late: lateCount, absent: absentCount, hasPressed: hasPressed
             });
 
             localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
@@ -543,17 +538,6 @@
 
         function recordAttendance(type) {
             if (!currentActiveClass || isPreviewMode) return;
-            
-            const now = new Date();
-            const nowTotal = now.getHours() * 60 + now.getMinutes();
-            const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
-            const classEndTotal = currentActiveClass.endHour * 60 + currentActiveClass.endMin;
-            
-            if (nowTotal < classStartTotal - 15 || nowTotal > classEndTotal) {
-                alert("⚠️ 現在は受付時間外です。");
-                return;
-            }
-
             timetable = timetable.map(item => {
                 if (item.id === currentActiveClass.id) {
                     if (type === 'present') item.present = (item.present || 0) + 1;
@@ -569,10 +553,8 @@
 
         function undoAttendance() {
             if (!currentActiveClass || isPreviewMode) return;
-            
             const target = timetable.find(item => item.id === currentActiveClass.id);
             if (!target || !target.hasPressed) return;
-
             const pressedType = target.hasPressed;
 
             timetable = timetable.map(item => {
@@ -590,27 +572,17 @@
 
         function findNextClass(currentDay, currentHour, currentMin) {
             if (timetable.length === 0) return null;
-
             const nowTotal = currentHour * 60 + currentMin;
-
-            let todayClasses = timetable.filter(item => item.day === currentDay);
-            todayClasses.sort((a, b) => parseInt(a.period) - parseInt(b.period));
+            let todayClasses = timetable.filter(item => item.day === currentDay).sort((a, b) => parseInt(a.period) - parseInt(b.period));
+            
             for (let item of todayClasses) {
-                const startTotal = item.startHour * 60 + item.startMin;
-                if (nowTotal < startTotal) {
-                    return { item: item, isToday: true };
-                }
+                if (nowTotal < (item.startHour * 60 + item.startMin)) return { item: item, isToday: true };
             }
-
             for (let i = 1; i <= 7; i++) {
                 let checkDay = (currentDay + i) % 7;
                 if (checkDay === 0 || checkDay === 6) continue;
-                
-                let nextDayClasses = timetable.filter(item => item.day === checkDay);
-                if (nextDayClasses.length > 0) {
-                    nextDayClasses.sort((a, b) => parseInt(a.period) - parseInt(b.period));
-                    return { item: nextDayClasses[0], isToday: false };
-                }
+                let nextDayClasses = timetable.filter(item => item.day === checkDay).sort((a, b) => parseInt(a.period) - parseInt(b.period));
+                if (nextDayClasses.length > 0) return { item: nextDayClasses[0], isToday: false };
             }
             return null;
         }
@@ -622,7 +594,6 @@
             const currentMin = now.getMinutes();
 
             document.getElementById('current-time-display').innerText = `${currentHour}:${String(currentMin).padStart(2, '0')}`;
-
             currentActiveClass = null;
             isPreviewMode = false;
             let previewDayLabel = "";
@@ -632,21 +603,13 @@
                     const startTotal = item.startHour * 60 + item.startMin - 15;
                     const endTotal = item.endHour * 60 + item.endMin;
                     const nowTotal = currentHour * 60 + currentMin;
-
-                    if (nowTotal >= startTotal && nowTotal <= endTotal) {
-                        currentActiveClass = item;
-                        break;
-                    }
+                    if (nowTotal >= startTotal && nowTotal <= endTotal) { currentActiveClass = item; break; }
                 }
             }
 
             if (!currentActiveClass) {
                 const nextData = findNextClass(currentDay, currentHour, currentMin);
-                if (nextData) {
-                    currentActiveClass = nextData.item;
-                    isPreviewMode = true;
-                    previewDayLabel = nextData.isToday ? "今日の次の授業" : `次の授業 (${dayNames[nextData.item.day]}曜日)`;
-                }
+                if (nextData) { currentActiveClass = nextData.item; isPreviewMode = true; previewDayLabel = nextData.isToday ? "今日の次の授業" : `次の授業 (${dayNames[nextData.item.day]}曜日)`; }
             }
 
             const labelEl = document.getElementById('status-label');
@@ -664,30 +627,16 @@
             const mapErrorEl = document.getElementById('map-error-message');
 
             if (currentActiveClass) {
-                let displayBuilding = "学内";
-                let finalMapUrl = "";
-
-                if (currentActiveClass.building === 'custom') {
-                    displayBuilding = currentActiveClass.customBuildingName;
-                    finalMapUrl = currentActiveClass.customEmbedUrl;
-                } else if (buildingMaster[currentActiveClass.building]) {
-                    displayBuilding = buildingMaster[currentActiveClass.building].name;
-                    finalMapUrl = buildingMaster[currentActiveClass.building].embedUrl;
-                }
+                let displayBuilding = "学内"; let finalMapUrl = "";
+                if (currentActiveClass.building === 'custom') { displayBuilding = currentActiveClass.customBuildingName; finalMapUrl = currentActiveClass.customEmbedUrl; }
+                else if (buildingMaster[currentActiveClass.building]) { displayBuilding = buildingMaster[currentActiveClass.building].name; finalMapUrl = buildingMaster[currentActiveClass.building].embedUrl; }
                 
                 nameEl.innerText = currentActiveClass.name;
                 roomEl.innerText = `📍 ${displayBuilding} ${currentActiveClass.room}`;
                 navEl.innerText = currentActiveClass.nav || "ナビ情報はありません。";
                 
-                if (finalMapUrl) {
-                    mapIframe.src = finalMapUrl;
-                    mapIframe.classList.remove('hidden');
-                    mapErrorEl.classList.add('hidden');
-                } else {
-                    mapIframe.src = "";
-                    mapIframe.classList.add('hidden');
-                    mapErrorEl.classList.remove('hidden');
-                }
+                if (finalMapUrl) { mapIframe.src = finalMapUrl; mapIframe.classList.remove('hidden'); mapErrorEl.classList.add('hidden'); }
+                else { mapIframe.src = ""; mapIframe.classList.add('hidden'); mapErrorEl.classList.remove('hidden'); }
 
                 counterBox.classList.remove('hidden');
                 document.getElementById('count-present').innerText = currentActiveClass.present || 0;
@@ -696,91 +645,37 @@
 
                 if (isPreviewMode) {
                     labelEl.innerText = `⏭️ ${previewDayLabel} (${currentActiveClass.period}限)`;
-                    labelEl.className = "text-amber-600 dark:text-amber-400 font-bold flex items-center";
                     dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
                     pingEl.classList.add('hidden');
-
                     btnEl.innerText = `🕒 時間外（${currentActiveClass.period}限の開始15分前から受付）`;
                     btnEl.disabled = true;
-                    btnEl.className = "w-full bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold py-4 px-4 rounded-xl text-sm cursor-not-allowed";
-                    
-                    lateBtn.classList.add('hidden');
-                    absentBtn.classList.add('hidden');
-                    undoBtn.classList.add('hidden');
-
+                    btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-sm cursor-not-allowed";
+                    lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.add('hidden');
                 } else {
                     labelEl.innerText = `🔴 現在の授業 (${currentActiveClass.period}限)`;
-                    labelEl.className = "text-cyan-700 dark:text-cyan-400 font-bold flex items-center";
                     dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-cyan-500";
                     pingEl.classList.remove('hidden');
-
-                    const nowTotal = currentHour * 60 + currentMin;
-                    const classStartTotal = currentActiveClass.startHour * 60 + currentActiveClass.startMin;
                     const hasPressedThisSlot = currentActiveClass.hasPressed;
 
                     if (hasPressedThisSlot) {
-                        let statusText = "出席";
-                        if (hasPressedThisSlot === 'late') statusText = "遅刻";
-                        if (hasPressedThisSlot === 'absent') statusText = "欠席";
-
-                        btnEl.innerText = `✓ ${statusText}記録済み`;
-                        btnEl.disabled = true;
-                        btnEl.className = "w-full bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
-                        
-                        lateBtn.classList.add('hidden');
-                        absentBtn.classList.add('hidden');
-                        undoBtn.classList.remove('hidden');
-                    } else if (nowTotal >= classStartTotal - 15) {
-                        btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`;
-                        btnEl.disabled = false;
-                        btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-cyan-600/20 active:scale-98 transition-all text-lg cursor-pointer";
-                        
-                        lateBtn.classList.remove('hidden');
-                        absentBtn.classList.remove('hidden');
-                        undoBtn.classList.add('hidden');
+                        let statusText = hasPressedThisSlot === 'late' ? "遅刻" : (hasPressedThisSlot === 'absent' ? "欠席" : "出席");
+                        btnEl.innerText = `✓ ${statusText}記録済み`; btnEl.disabled = true;
+                        btnEl.className = "w-full bg-slate-200 text-slate-400 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                        lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.remove('hidden');
                     } else {
-                        btnEl.innerText = "🕒 時間外（開始15分前から受付）";
-                        btnEl.disabled = true;
-                        btnEl.className = "w-full bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
-                        
-                        lateBtn.classList.add('hidden');
-                        absentBtn.classList.add('hidden');
-                        undoBtn.classList.add('hidden');
+                        btnEl.innerText = `🔴 ${currentActiveClass.period}限の出席を記録`; btnEl.disabled = false;
+                        btnEl.className = "w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-lg cursor-pointer";
+                        lateBtn.classList.remove('hidden'); absentBtn.classList.remove('hidden'); undoBtn.classList.add('hidden');
                     }
                 }
             } else {
                 labelEl.innerText = "授業データがありません";
-                labelEl.className = "text-slate-400 dark:text-slate-500 font-normal";
-                dotEl.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-300";
-                pingEl.classList.add('hidden');
-
-                nameEl.innerText = "時間割が未登録です";
-                roomEl.innerText = "📍 -";
-                navEl.innerText = "「時間割表」のマス目をタップして、今期の授業情報を入力してください！";
-                btnEl.innerText = "🔴 出席ボタン（時間外）";
-                btnEl.disabled = true;
-                btnEl.className = "w-full bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-600 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
-                
-                mapIframe.src = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1633.6455319998395!2d135.77965276810284!3d35.02444769885349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001095e68fa40e5%3A0x204d7048a2a534c8!2z5Lqs6YO95aSn5a2mIOWQieeUsOWNl-e3j-WQiOmkqCDljJfmo58!5e0!3m2!1sja!2sjp!4v1782136250844!5m2!1sja!2sjp";
-                mapIframe.classList.remove('hidden');
-                mapErrorEl.classList.add('hidden');
-
-                lateBtn.classList.add('hidden');
-                absentBtn.classList.add('hidden');
-                undoBtn.classList.add('hidden');
-                counterBox.classList.add('hidden');
-
-                let needSave = false;
-                timetable = timetable.map(item => {
-                    if (item.hasPressed) {
-                        item.hasPressed = null;
-                        needSave = true;
-                    }
-                    return item;
-                });
-                if (needSave) {
-                    localStorage.setItem('kyodai_timetable', JSON.stringify(timetable));
-                }
+                nameEl.innerText = "時間割が未登録です"; roomEl.innerText = "📍 -";
+                navEl.innerText = "「時間割表」から授業を入力してください！";
+                btnEl.innerText = "🔴 出席ボタン（時間外）"; btnEl.disabled = true;
+                btnEl.className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-4 rounded-xl text-lg cursor-not-allowed";
+                mapIframe.src = buildingMaster["kyo-kita"].embedUrl;
+                lateBtn.classList.add('hidden'); absentBtn.classList.add('hidden'); undoBtn.classList.add('hidden'); counterBox.classList.add('hidden');
             }
         }
 
